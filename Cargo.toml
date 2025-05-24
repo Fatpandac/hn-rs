@@ -3,4 +3,10 @@ name = "hackernews-rs"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [
+  "lib/hackernews"
+]
+
 [dependencies]
+hackernews = { path = "lib/hackernews" }
