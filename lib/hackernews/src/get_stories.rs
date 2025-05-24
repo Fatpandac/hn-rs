@@ -1,6 +1,6 @@
 use reqwest::Error;
 
-use crate::consts::{get_stories_url, StoryType};
+use crate::api_url::{get_stories_url, StoryType};
 
 type StoriesResponse = Vec<usize>;
 

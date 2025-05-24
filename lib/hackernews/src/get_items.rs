@@ -1,7 +1,7 @@
 use reqwest::Error;
 use serde::Deserialize;
 
-use crate::consts::get_item_url;
+use crate::api_url::get_item_url;
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
