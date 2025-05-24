@@ -27,3 +27,7 @@ pub fn get_stories_url(endpoint: StoryType) -> String {
     format!("{}{}", API_BASE_URL, endpoint)
 }
 
+pub fn get_item_url(item_id: usize) -> String {
+    format!("{}{}", API_BASE_URL, ITEM_ENDPOINT.replace("{}", &item_id.to_string()))
+}
+
