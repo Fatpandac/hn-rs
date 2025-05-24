@@ -7,6 +7,7 @@ const BEST_STORIES_ENDPOINT: &str = "beststories.json";
 const JOBS_ENDPOINT: &str = "jobstories.json";
 
 const ITEM_ENDPOINT: &str = "item/{}.json";
+const USER_ENDPOINT: &str = "user/{}.json";
 
 pub enum StoryType {
     Top,
@@ -31,6 +32,10 @@ pub fn get_item_url(item_id: usize) -> String {
     format!("{}{}", API_BASE_URL, ITEM_ENDPOINT.replace("{}", &item_id.to_string()))
 }
 
+pub fn get_user_url(username: &str) -> String {
+    format!("{}{}", API_BASE_URL, USER_ENDPOINT.replace("{}", username))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -48,6 +53,12 @@ mod tests {
     fn test_get_item_url() {
         let item_id = 12345;
         assert_eq!(get_item_url(item_id), format!("{}item/{}.json", API_BASE_URL, item_id));
+    }
+
+    #[test]
+    fn test_get_user_url() {
+        let username = "testuser";
+        assert_eq!(get_user_url(username), format!("{}user/{}.json", API_BASE_URL, username));
     }
 }
 
