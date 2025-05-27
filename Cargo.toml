@@ -9,4 +9,7 @@ members = [
 ]
 
 [dependencies]
+crossterm = "0.29.0"
 hackernews = { path = "lib/hackernews" }
+ratatui = "0.29.0"
+tokio = "1.45.0"
