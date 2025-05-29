@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::api_url::get_item_url;
 
-#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Job,
@@ -14,21 +14,21 @@ pub enum ItemType {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct ItemResponse {
     id: usize,
     deleted: Option<bool>,
     r#type: ItemType,
-    by: Option<String>,
-    time: usize,
-    text: Option<String>,
+    pub by: Option<String>,
+    pub time: usize,
+    pub text: Option<String>,
     dead: Option<bool>,
     parent: Option<usize>,
     poll: Option<usize>,
     kids: Option<Vec<usize>>,
-    url: Option<String>,
+    pub url: Option<String>,
     score: Option<usize>,
-    title: String,
+    pub title: String,
     parts: Option<Vec<usize>>,
     descendants: Option<usize>,
 }

@@ -9,12 +9,25 @@ const JOBS_ENDPOINT: &str = "jobstories.json";
 const ITEM_ENDPOINT: &str = "item/{}.json";
 const USER_ENDPOINT: &str = "user/{}.json";
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum StoryType {
     Top,
     New,
     Show,
     Best,
     Jobs,
+}
+
+impl ToString for StoryType {
+    fn to_string(&self) -> String {
+        match self {
+            StoryType::Top => "Top Stories".to_string(),
+            StoryType::New => "New Stories".to_string(),
+            StoryType::Show => "Show Stories".to_string(),
+            StoryType::Best => "Best Stories".to_string(),
+            StoryType::Jobs => "Job Stories".to_string(),
+        }
+    }
 }
 
 pub fn get_stories_url(endpoint: StoryType) -> String {

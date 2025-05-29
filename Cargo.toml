@@ -9,7 +9,9 @@ members = [
 ]
 
 [dependencies]
+chrono = "0.4.41"
 crossterm = "0.29.0"
 hackernews = { path = "lib/hackernews" }
+html2text = "0.15.0"
 ratatui = "0.29.0"
 tokio = "1.45.0"
