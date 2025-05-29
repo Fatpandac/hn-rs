@@ -1,5 +1,7 @@
 use std::{
-    io::{self, stdout}, ops::DerefMut, time::Duration, usize
+    io::{self, stdout},
+    time::Duration,
+    usize,
 };
 
 use chrono::DateTime;
@@ -113,7 +115,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         terminal.draw(|f| {
-            self::draw(f, data.clone(), selected, current_topic, &mut list_top_cursor);
+            self::draw(
+                f,
+                data.clone(),
+                selected,
+                current_topic,
+                &mut list_top_cursor,
+            );
         })?;
 
         if let Some(item) = rx.borrow().clone() {
@@ -130,7 +138,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn draw(frame: &mut Frame, data: Vec<ItemResponse>, selected: usize, topic: StoryType, list_top_cursor: &mut usize) {
+fn draw(
+    frame: &mut Frame,
+    data: Vec<ItemResponse>,
+    selected: usize,
+    topic: StoryType,
+    list_top_cursor: &mut usize,
+) {
     let horizontal = Layout::horizontal([
         ratatui::layout::Constraint::Percentage(30),
         ratatui::layout::Constraint::Percentage(70),
@@ -148,14 +162,19 @@ fn draw(frame: &mut Frame, data: Vec<ItemResponse>, selected: usize, topic: Stor
         .border_type(BorderType::Rounded)
         .title("Content");
 
-    let list_items = data.iter().enumerate().map(|(idx, item)| {
-        if idx == selected.try_into().unwrap_or(0) {
-            ListItem::new(item.title.clone()).style(Style::default().bg(Color::Blue))
-        } else {
-            ListItem::new(item.title.clone())
-        }
-    }).collect::<Vec<_>>();
-    
+    let list_items = data
+        .iter()
+        .enumerate()
+        .map(|(idx, item)| {
+            let mut list_item = ListItem::new(item.title.clone());
+            if idx == selected.try_into().unwrap_or(0) {
+                list_item = list_item.style(Style::default().bg(Color::Blue));
+            }
+
+            list_item
+        })
+        .collect::<Vec<_>>();
+
     let list_len: usize = list_items.len().try_into().unwrap_or(0);
     if selected < *list_top_cursor {
         *list_top_cursor = list_top_cursor.clone().saturating_sub(1);
@@ -163,8 +182,11 @@ fn draw(frame: &mut Frame, data: Vec<ItemResponse>, selected: usize, topic: Stor
         *list_top_cursor = list_top_cursor.clone().saturating_add(1);
     }
     let top: usize = *list_top_cursor;
-    let bottom: usize = (selected + left_height).try_into().unwrap_or(0).min(list_items.len());
-    let list = List::new(list_items[top .. bottom].to_vec()).block(left_block);
+    let bottom: usize = (selected + left_height)
+        .try_into()
+        .unwrap_or(0)
+        .min(list_items.len());
+    let list = List::new(list_items[top..bottom].to_vec()).block(left_block);
 
     let article = Paragraph::new(data.get(selected as usize).map_or(
         "No article selected".to_string(),
