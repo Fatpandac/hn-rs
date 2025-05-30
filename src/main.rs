@@ -10,6 +10,7 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use futures::stream::{FuturesUnordered, StreamExt};
 use hackernews::{
     StoryType,
     get_items::{ItemResponse, get_item},
@@ -58,8 +59,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = watch::channel::<Option<ItemResponse>>(None);
 
     tokio::spawn(async move {
+        let mut last_topic: Option<StoryType> = None;
+
         loop {
+            if last_topic == Some(*rx_topic.borrow()) {
+                continue;
+            }
+
             let topic = rx_topic.borrow().clone();
+            last_topic = Some(topic);
 
             let list = match topic {
                 StoryType::Top => get_topstories().await,
@@ -70,14 +78,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             .unwrap();
 
-            for item_id in list {
-                if rx_topic.has_changed().unwrap_or(false) {
-                    tx.send(None).unwrap();
-                    let _ = rx_topic.changed().await;
+            let mut futures = FuturesUnordered::new();
+
+            for chunk in list.chunks(5) {
+                for item_id in chunk {
+                    let fut = get_item(*item_id);
+                    futures.push(async move {
+                        match fut.await {
+                            Ok(item) => Some(item),
+                            Err(_) => None,
+                        }
+                    });
+                }
+                if last_topic != Some(*rx_topic.borrow()) {
                     break;
                 }
-                if let Ok(item) = get_item(item_id).await {
-                    tx.send(Some(item)).unwrap();
+                loop {
+                    tokio::select! {
+                        changed = rx_topic.changed() => {
+                            if changed.is_ok() {
+                                tx.send(None).ok();
+                                break;
+                            }
+                        }
+
+                        maybe_item = futures.next() => {
+                            match maybe_item {
+                                Some(item) => {
+                                    tx.send(item).ok();
+                                }
+                                None => {
+                                    futures.clear();
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -154,7 +190,7 @@ fn draw(
     let left_block = Block::bordered()
         .border_type(BorderType::Rounded)
         .title(Line::from(vec![
-            Span::raw("<"),
+            Span::raw(format!("<({}/{})", selected, data.len())),
             Span::styled("T", Style::default().fg(Color::Red)),
             Span::raw(format!(" - {}>", topic.to_string())),
         ]));
