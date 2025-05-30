@@ -190,9 +190,14 @@ fn draw(
     let left_block = Block::bordered()
         .border_type(BorderType::Rounded)
         .title(Line::from(vec![
-            Span::raw(format!("<({}/{})", selected, data.len())),
+            Span::raw("<"),
             Span::styled("T", Style::default().fg(Color::Red)),
-            Span::raw(format!(" - {}>", topic.to_string())),
+            Span::raw(format!(
+                " - {}({}/{})>",
+                topic.to_string(),
+                selected,
+                data.len()
+            )),
         ]));
     let right_block = Block::bordered()
         .border_type(BorderType::Rounded)
