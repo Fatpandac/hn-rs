@@ -10,7 +10,6 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use futures::stream::{FuturesUnordered, StreamExt};
 use hackernews::{
     StoryType,
     get_items::{ItemResponse, get_item},
@@ -55,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut list_top_cursor = 0;
     let _ = terminal.clear();
 
-    let (tx_topic, mut rx_topic) = watch::channel::<StoryType>(StoryType::Show);
+    let (tx_topic, rx_topic) = watch::channel::<StoryType>(StoryType::Show);
     let (tx, rx) = watch::channel::<Option<ItemResponse>>(None);
 
     tokio::spawn(async move {
@@ -78,42 +77,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             .unwrap();
 
-            let mut futures = FuturesUnordered::new();
-
-            for chunk in list.chunks(5) {
-                for item_id in chunk {
-                    let fut = get_item(*item_id);
-                    futures.push(async move {
-                        match fut.await {
-                            Ok(item) => Some(item),
-                            Err(_) => None,
-                        }
-                    });
-                }
+            for &id in list.iter().take(30) {
+                let res = get_item(id).await.unwrap();
                 if last_topic != Some(*rx_topic.borrow()) {
+                    let _ = tx.send(None);
                     break;
-                }
-                loop {
-                    tokio::select! {
-                        changed = rx_topic.changed() => {
-                            if changed.is_ok() {
-                                tx.send(None).ok();
-                                break;
-                            }
-                        }
-
-                        maybe_item = futures.next() => {
-                            match maybe_item {
-                                Some(item) => {
-                                    tx.send(item).ok();
-                                }
-                                None => {
-                                    futures.clear();
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                } else {
+                    let _ = tx.send(Some(res));
                 }
             }
         }
