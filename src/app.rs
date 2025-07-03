@@ -22,8 +22,8 @@ impl APP {
         rx_item: watch::Receiver<Option<ItemResponse>>,
     ) -> Self {
         Self {
-            right_block: RightBlock::new(None, false),
-            left_block: LeftBlock::new(Vec::new(), 0, hackernews::StoryType::Show, 0, true),
+            right_block: RightBlock::new(None, false, 0),
+            left_block: LeftBlock::new(Vec::new(), 0, hackernews::StoryType::Show, true),
             data: Vec::new(),
             selected: 0,
             focus: 0,
@@ -37,13 +37,14 @@ impl APP {
         if let Some(item) = self.rx_item.borrow().clone() {
             if self.data.last() != Some(&item) {
                 self.data.push(item);
-                self.left_block.set_data(self.data.clone());
+                self.left_block.data = self.data.clone();
+                self.right_block.set_data(self.data.get(self.selected).cloned());
             }
         } else {
             self.data.clear();
             self.selected = 0;
-            self.left_block.set_data(self.data.clone());
-            self.left_block.set_selected(self.selected);
+            self.left_block.data =  self.data.clone();
+            self.left_block.selected = self.selected;
         }
     }
 
@@ -76,28 +77,34 @@ impl APP {
                     .selected
                     .saturating_add(1)
                     .min(self.data.len().saturating_sub(1));
-                self.left_block.set_selected(self.selected);
+                self.left_block.selected = self.selected;
                 self.right_block.set_data(self.data.get(self.selected).cloned());
             } else if key.code == KeyCode::Char('k') {
                 self.selected = self.selected.saturating_sub(1);
-                self.left_block.set_selected(self.selected);
+                self.left_block.selected = self.selected;
                 self.right_block.set_data(self.data.get(self.selected).cloned());
             } else if key.code == KeyCode::Tab {
                 self.next_topic();
-                self.left_block.set_topic(self.current_topic);
+                self.left_block.topic = self.current_topic;
             } else if key.code == KeyCode::BackTab {
                 self.prev_topic();
-                self.left_block.set_topic(self.current_topic);
+                self.left_block.topic = self.current_topic;
+            }
+        } else if self.focus == 1 {
+            if key.code == KeyCode::Char('j') {
+                self.right_block.scroll(false);
+            } else if key.code == KeyCode::Char('k') {
+                self.right_block.scroll(true);
             }
         }
         if key.code == KeyCode::Char('h') {
             self.focus = 0;
-            self.left_block.set_focus(true);
-            self.right_block.set_focus(false);
+            self.left_block.focus = true;
+            self.right_block.focus = false;
         } else if key.code == KeyCode::Char('l') {
             self.focus = 1;
-            self.left_block.set_focus(false);
-            self.right_block.set_focus(true);
+            self.left_block.focus = false;
+            self.right_block.focus = true;
         }
     }
 

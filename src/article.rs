@@ -10,41 +10,55 @@ use ratatui::{
 };
 
 pub struct RightBlock {
-    data: Option<ItemResponse>,
-    focus: bool,
+    pub data: Option<ItemResponse>,
+    pub focus: bool,
+    scroll_offset: u16,
+    block_height: u16,
+    block_width: u16,
 }
 
 impl RightBlock {
-    pub fn new(data: Option<ItemResponse>, focus: bool) -> Self {
+    pub fn new(data: Option<ItemResponse>, focus: bool, scroll_offset: u16) -> Self {
         Self {
             data,
             focus,
+            scroll_offset,
+            block_height: 0,
+            block_width: 0,
         }
     }
 
-    pub fn set_focus(&mut self, focus: bool) {
-        self.focus = focus;
-    }
-
     pub fn set_data(&mut self, data: Option<ItemResponse>) {
+        if self.data == data {
+            return;
+        }
         self.data = data;
+        self.scroll_offset = 0;
     }
 
-    pub fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
-        let right_block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .border_style({
-                if self.focus {
-                    Style::new().blue()
-                } else {
-                    Style::new()
-                }
-            })
-            .title("Content");
+    pub fn scroll(&mut self, up: bool) {
+        let padding = 2;
+        let content_height = {
+            let content = self.generate_content();
+            content.lines().fold(0, |acc, line| {
+                acc + (line.len() as u16 / self.block_width).saturating_add(1)
+            }) + padding
+        };
+        self.scroll_offset = {
+            if up {
+                self.scroll_offset.saturating_sub(1)
+            } else if self.scroll_offset + self.block_height < content_height + padding {
+                self.scroll_offset.saturating_add(1)
+            } else {
+                self.scroll_offset
+            }
+        }
+    }
 
-        let article = Paragraph::new(self.data.clone().map_or(
-            "No article selected".to_string(),
-            |item| {
+    fn generate_content(&self) -> String {
+        self.data
+            .as_ref()
+            .map_or("No article selected".to_string(), |item| {
                 format!(
                     "Title: {}\nAuthor: {}\nTime: {}\nURL: {}\n\n{}",
                     item.title,
@@ -60,14 +74,37 @@ impl RightBlock {
                                 .as_deref()
                                 .unwrap_or("No content available")
                                 .as_bytes(),
-                            rect.width.into()
+                            self.block_width.into()
                         )
                         .unwrap()
                 )
-            },
-        ))
+            })
+    }
+
+    pub fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
+        self.block_height = rect.height;
+        self.block_width = rect.width;
+        let right_block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .border_style({
+                if self.focus {
+                    Style::new().blue()
+                } else {
+                    Style::new()
+                }
+            })
+            .title("Content");
+
+        let article = Paragraph::new(
+            self.data
+                .clone()
+                .map_or("No article selected".to_string(), |_| {
+                    self.generate_content()
+                }),
+        )
         .wrap(ratatui::widgets::Wrap { trim: true })
-        .block(right_block);
+        .block(right_block)
+        .scroll((self.scroll_offset, 0));
 
         f.render_widget(article, rect);
         Ok(())

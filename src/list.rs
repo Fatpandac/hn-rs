@@ -9,11 +9,11 @@ use ratatui::{
 };
 
 pub struct LeftBlock {
-    data: Vec<ItemResponse>,
-    selected: usize,
-    topic: StoryType,
+    pub data: Vec<ItemResponse>,
+    pub selected: usize,
+    pub topic: StoryType,
+    pub focus: bool,
     list_top_cursor: usize,
-    focus: bool,
 }
 
 impl LeftBlock {
@@ -21,32 +21,15 @@ impl LeftBlock {
         data: Vec<ItemResponse>,
         selected: usize,
         topic: StoryType,
-        list_top_cursor: usize,
         focus: bool,
     ) -> Self {
         Self {
             data,
-            selected,
             topic,
-            list_top_cursor,
             focus,
+            selected,
+            list_top_cursor: 0,
         }
-    }
-
-    pub fn set_focus(&mut self, focus: bool) {
-        self.focus = focus;
-    }
-
-    pub fn set_data(&mut self, data: Vec<ItemResponse>) {
-        self.data = data;
-    }
-
-    pub fn set_selected(&mut self, selected: usize) {
-        self.selected = selected;
-    }
-
-    pub fn set_topic(&mut self, topic: StoryType) {
-        self.topic = topic;
     }
 
     pub fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
@@ -93,11 +76,11 @@ impl LeftBlock {
 
         let list_len: usize = list_items.len().try_into().unwrap_or(0);
         if self.selected < self.list_top_cursor {
-            self.list_top_cursor = self.list_top_cursor.clone().saturating_sub(1);
+            self.list_top_cursor = self.list_top_cursor.saturating_sub(1);
         } else if self.selected >= self.list_top_cursor + height.saturating_sub(2)
             && self.selected < list_len
         {
-            self.list_top_cursor = self.list_top_cursor.clone().saturating_add(1);
+            self.list_top_cursor = self.list_top_cursor.saturating_add(1);
         }
         let top: usize = self.list_top_cursor;
         let bottom: usize = (self.selected + height)
