@@ -1,15 +1,19 @@
 use std::io::Result;
 
 use chrono::DateTime;
+use crossterm::event::{KeyCode, KeyEvent};
 use hackernews::get_items::ItemResponse;
 use html2text::config;
 use ratatui::{
     Frame,
+    layout::Rect,
     style::{Style, Stylize},
     widgets::{Block, BorderType, Paragraph},
 };
 
-pub struct RightBlock {
+use crate::component::Component;
+
+pub struct Article {
     pub data: Option<ItemResponse>,
     pub focus: bool,
     scroll_offset: u16,
@@ -17,7 +21,46 @@ pub struct RightBlock {
     block_width: u16,
 }
 
-impl RightBlock {
+impl Component for Article {
+    fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
+        self.block_height = rect.height;
+        self.block_width = rect.width;
+        let right_block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .border_style({
+                if self.focus {
+                    Style::new().blue()
+                } else {
+                    Style::new()
+                }
+            })
+            .title("Content");
+
+        let article = Paragraph::new(
+            self.data
+                .clone()
+                .map_or("No article selected".to_string(), |_| {
+                    self.generate_content()
+                }),
+        )
+        .wrap(ratatui::widgets::Wrap { trim: true })
+        .block(right_block)
+        .scroll((self.scroll_offset, 0));
+
+        f.render_widget(article, rect);
+        Ok(())
+    }
+
+    fn event(&mut self, key: KeyEvent) {
+        if key.code == KeyCode::Char('j') {
+            self.scroll(false);
+        } else if key.code == KeyCode::Char('k') {
+            self.scroll(true);
+        }
+    }
+}
+
+impl Article {
     pub fn new(data: Option<ItemResponse>, focus: bool, scroll_offset: u16) -> Self {
         Self {
             data,
@@ -79,34 +122,5 @@ impl RightBlock {
                         .unwrap()
                 )
             })
-    }
-
-    pub fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
-        self.block_height = rect.height;
-        self.block_width = rect.width;
-        let right_block = Block::bordered()
-            .border_type(BorderType::Rounded)
-            .border_style({
-                if self.focus {
-                    Style::new().blue()
-                } else {
-                    Style::new()
-                }
-            })
-            .title("Content");
-
-        let article = Paragraph::new(
-            self.data
-                .clone()
-                .map_or("No article selected".to_string(), |_| {
-                    self.generate_content()
-                }),
-        )
-        .wrap(ratatui::widgets::Wrap { trim: true })
-        .block(right_block)
-        .scroll((self.scroll_offset, 0));
-
-        f.render_widget(article, rect);
-        Ok(())
     }
 }

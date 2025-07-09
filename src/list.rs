@@ -1,5 +1,6 @@
 use std::io::Result;
 
+use crossterm::event::KeyCode;
 use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{
     Frame,
@@ -8,7 +9,9 @@ use ratatui::{
     widgets::{Block, BorderType, List, ListItem},
 };
 
-pub struct LeftBlock {
+use crate::component::Component;
+
+pub struct ListBlock {
     pub data: Vec<ItemResponse>,
     pub selected: usize,
     pub topic: StoryType,
@@ -16,13 +19,8 @@ pub struct LeftBlock {
     list_top_cursor: usize,
 }
 
-impl LeftBlock {
-    pub fn new(
-        data: Vec<ItemResponse>,
-        selected: usize,
-        topic: StoryType,
-        focus: bool,
-    ) -> Self {
+impl ListBlock {
+    pub fn new(data: Vec<ItemResponse>, selected: usize, topic: StoryType, focus: bool) -> Self {
         Self {
             data,
             topic,
@@ -32,7 +30,34 @@ impl LeftBlock {
         }
     }
 
-    pub fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
+    fn next_topic(&mut self) {
+        self.topic = match self.topic {
+            StoryType::Show => StoryType::Best,
+            StoryType::Best => StoryType::Jobs,
+            StoryType::Jobs => StoryType::Top,
+            StoryType::Top => StoryType::New,
+            StoryType::New => StoryType::Show,
+        };
+    }
+
+    fn prev_topic(&mut self) {
+        self.topic = match self.topic {
+            StoryType::Show => StoryType::New,
+            StoryType::New => StoryType::Top,
+            StoryType::Top => StoryType::Jobs,
+            StoryType::Jobs => StoryType::Best,
+            StoryType::Best => StoryType::Show,
+        };
+    }
+
+    pub fn reset(&mut self) {
+        self.data.clear();
+        self.selected = 0;
+    }
+}
+
+impl Component for ListBlock {
+    fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
         let height = rect.height as usize;
         let left_block = Block::bordered()
             .border_type(BorderType::Rounded)
@@ -49,13 +74,8 @@ impl LeftBlock {
                 Span::raw(format!(
                     " - {}({}/{})>",
                     self.topic.to_string(),
-                    self.selected.saturating_add({
-                        if self.data.is_empty() {
-                            0
-                        } else {
-                            1
-                        }
-                    }),
+                    self.selected
+                        .saturating_add(if self.data.is_empty() { 0 } else { 1 }),
                     self.data.len()
                 )),
             ]));
@@ -91,5 +111,20 @@ impl LeftBlock {
 
         f.render_widget(list, rect);
         Ok(())
+    }
+
+    fn event(&mut self, key: crossterm::event::KeyEvent) {
+        if key.code == KeyCode::Char('j') {
+            self.selected = self
+                .selected
+                .saturating_add(1)
+                .min(self.data.len().saturating_sub(1));
+        } else if key.code == KeyCode::Char('k') {
+            self.selected = self.selected.saturating_sub(1);
+        } else if key.code == KeyCode::Tab {
+            self.next_topic();
+        } else if key.code == KeyCode::BackTab {
+            self.prev_topic();
+        }
     }
 }

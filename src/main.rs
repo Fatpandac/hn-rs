@@ -23,6 +23,7 @@ use crate::app::APP;
 mod app;
 mod list;
 mod article;
+mod component;
 
 fn setup_terminal() -> std::io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     enable_raw_mode()?;
