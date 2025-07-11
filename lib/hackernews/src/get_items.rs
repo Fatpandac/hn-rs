@@ -1,9 +1,9 @@
-use reqwest::Error;
-use serde::Deserialize;
+use firebase_rs::RequestError;
+use serde::{Deserialize, Serialize};
 
-use crate::api_url::get_item_url;
+use crate::api_url::{firebase, get_item_url};
 
-#[derive(Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Job,
@@ -14,7 +14,7 @@ pub enum ItemType {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct ItemResponse {
     id: usize,
     deleted: Option<bool>,
@@ -33,9 +33,10 @@ pub struct ItemResponse {
     descendants: Option<usize>,
 }
 
-pub async fn get_item(item_id: usize) -> Result<ItemResponse, Error> {
-    let url = get_item_url(item_id);
-    let response = reqwest::get(url).await?.json::<ItemResponse>().await?;
+pub async fn get_item(item_id: usize) -> Result<ItemResponse, RequestError> {
+    let firebase = firebase();
+    let item_url = get_item_url(item_id);
+    let response = firebase.at(&item_url).get::<ItemResponse>().await?;
 
     Ok(response)
 }
@@ -48,7 +49,6 @@ mod tests {
     async fn test_get_item() {
         let item_id = 8863; // Example item ID
         let response = get_item(item_id).await;
-        println!("Response: {:?}", response);
         assert!(response.is_ok());
         let item = response.unwrap();
         assert_eq!(item.id, item_id);
