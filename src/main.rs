@@ -1,6 +1,6 @@
 use std::{
     io::{self, stdout},
-    time::Duration
+    time::Duration,
 };
 
 use crossterm::{
@@ -11,9 +11,7 @@ use crossterm::{
 use hackernews::{
     StoryType,
     get_items::{ItemResponse, get_item},
-    get_stories::{
-        get_beststories, get_jobstories, get_newstories, get_showstories, get_topstories,
-    },
+    get_stories::get_stories,
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use tokio::sync::watch;
@@ -21,9 +19,9 @@ use tokio::sync::watch;
 use crate::app::APP;
 
 mod app;
-mod list;
 mod article;
 mod component;
+mod list;
 
 fn setup_terminal() -> std::io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     enable_raw_mode()?;
@@ -63,14 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let topic = rx_topic.borrow().clone();
             last_topic = Some(topic);
 
-            let list = match topic {
-                StoryType::Top => get_topstories().await,
-                StoryType::New => get_newstories().await,
-                StoryType::Show => get_showstories().await,
-                StoryType::Best => get_beststories().await,
-                StoryType::Jobs => get_jobstories().await,
-            }
-            .unwrap();
+            let list = get_stories(topic).await.unwrap();
 
             for &id in list.iter().take(30) {
                 let res = get_item(id).await.unwrap();
