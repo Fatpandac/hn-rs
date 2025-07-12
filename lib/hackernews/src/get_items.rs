@@ -1,7 +1,7 @@
 use firebase_rs::RequestError;
 use serde::{Deserialize, Serialize};
 
-use crate::api_url::{firebase, get_item_url};
+use crate::{api_url::{firebase, get_item_url}, cache::CacheItemType};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]
@@ -36,9 +36,13 @@ pub struct ItemResponse {
 pub async fn get_item(item_id: usize) -> Result<ItemResponse, RequestError> {
     let firebase = firebase();
     let item_url = get_item_url(item_id);
-    let response = firebase.at(&item_url).get::<ItemResponse>().await?;
+    let response = firebase.get(&item_url).await?;
 
-    Ok(response)
+    if let CacheItemType::Item(item) = response {
+        Ok(item)
+    } else {
+        Err(RequestError::SerializeError)
+    }
 }
 
 #[cfg(test)]

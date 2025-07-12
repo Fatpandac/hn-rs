@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use firebase_rs::Firebase;
 use once_cell::sync::Lazy;
+
+use crate::cache::FirebaseCache;
 
 const API_BASE_URL: &str = "https://hacker-news.firebaseio.com/v0/";
 
@@ -14,11 +15,14 @@ const JOBS_ENDPOINT: &str = "jobstories";
 const ITEM_ENDPOINT: &str = "item/{}";
 const USER_ENDPOINT: &str = "user/{}";
 
-static FIREBASE: Lazy<Arc<Firebase>> = Lazy::new(|| {
-    Arc::new(Firebase::new(API_BASE_URL).expect("Failed to create Firebase instance"))
+static FIREBASE: Lazy<Arc<FirebaseCache>> = Lazy::new(|| {
+    Arc::new(FirebaseCache::new(
+        API_BASE_URL,
+        std::time::Duration::from_secs(60 * 5),
+    ))
 });
 
-pub fn firebase() -> Arc<Firebase> {
+pub fn firebase() -> Arc<FirebaseCache> {
     FIREBASE.clone()
 }
 
