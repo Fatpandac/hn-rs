@@ -51,11 +51,11 @@ impl APP {
         } else if self.focus == 1 {
             self.right_block.event(key);
         }
-        if key.code == KeyCode::Char('h') {
+        if key.code == KeyCode::Char('h') || key.code == KeyCode::Esc {
             self.focus = 0;
             self.left_block.focus = true;
             self.right_block.focus = false;
-        } else if key.code == KeyCode::Char('l') {
+        } else if key.code == KeyCode::Char('l') || key.code == KeyCode::Enter {
             self.focus = 1;
             self.left_block.focus = false;
             self.right_block.focus = true;
