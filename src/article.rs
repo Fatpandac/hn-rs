@@ -104,7 +104,7 @@ impl Article {
             .map_or("No article selected".to_string(), |item| {
                 format!(
                     "Title: {}\nAuthor: {}\nTime: {}\nURL: {}\n\n{}",
-                    item.title,
+                    item.title.clone().unwrap_or("No title".to_string()),
                     item.by.as_deref().unwrap_or("Unknown"),
                     DateTime::from_timestamp(item.time as i64, 0)
                         .unwrap()

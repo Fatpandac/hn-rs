@@ -28,7 +28,7 @@ pub struct ItemResponse {
     kids: Option<Vec<usize>>,
     pub url: Option<String>,
     score: Option<usize>,
-    pub title: String,
+    pub title: Option<String>,
     parts: Option<Vec<usize>>,
     descendants: Option<usize>,
 }

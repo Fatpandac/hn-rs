@@ -85,7 +85,7 @@ impl Component for ListBlock {
             .iter()
             .enumerate()
             .map(|(idx, item)| {
-                let mut list_item = ListItem::new(item.title.clone());
+                let mut list_item = ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
                 if idx == self.selected.try_into().unwrap_or(0) {
                     list_item = list_item.style(Style::default().bg(Color::Blue));
                 }
