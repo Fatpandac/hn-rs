@@ -1,6 +1,6 @@
 use std::{
     io::{self, stdout},
-    time::Duration,
+    time::Duration, usize,
 };
 
 use crossterm::{
@@ -37,6 +37,20 @@ fn restore_terminal() -> std::io::Result<()> {
     Ok(())
 }
 
+#[derive(PartialEq, Debug, Clone)]
+enum ChannelAction {
+    Story(StoryType),
+    Items(Vec<usize>),
+}
+
+#[derive(PartialEq, Debug, Clone)]
+enum ChannelData {
+    Story(Option<Vec<ItemResponse>>),
+    Comment(Option<Vec<ItemResponse>>),
+}
+
+
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let stdout = io::stdout();
@@ -46,36 +60,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = terminal.clear();
 
     let (tx_stop, rx_stop) = watch::channel::<bool>(true);
-    let (tx_topic, rx_topic) = watch::channel::<StoryType>(StoryType::Show);
-    let (tx, rx) = watch::channel::<Option<Vec<ItemResponse>>>(None);
+    let (tx_aciton, rx_action) = watch::channel::<ChannelAction>(ChannelAction::Story(StoryType::Show));
+    let (tx_data, rx_data) = watch::channel::<ChannelData>(ChannelData::Story(None));
 
-    let mut app = APP::new(tx_topic.clone(), rx.clone());
+    let mut app = APP::new(tx_aciton.clone(), rx_data.clone());
 
     tokio::spawn(async move {
         let mut last_topic: Option<StoryType> = None;
+        let mut last_item: Option<Vec<usize>> = None;
 
-        while rx_stop.borrow().clone() {
+        while *rx_stop.borrow() {
+            let rx_topic = rx_action.borrow().clone();
             if let Some(last) = last_topic {
-                if *rx_topic.borrow() == last {
-                    continue;
-                } else {
-                    tx.send(None).unwrap();
+                if let ChannelAction::Story(topic) = rx_topic {
+                    if topic == last {
+                        continue;
+                    } else {
+                        tx_data.send(ChannelData::Story(None)).unwrap();
+                    }
+                } else if let ChannelAction::Items(ref items) = rx_topic {
+                    if *items == last_item.clone().unwrap_or_default() {
+                        continue;
+                    } else {
+                        tx_data.send(ChannelData::Comment(None)).unwrap();
+                    }
                 }
             }
-            let topic = *rx_topic.borrow();
-            last_topic = Some(topic);
 
-            let list = get_stories(topic).await.unwrap();
-            let responses = join_all(list.iter().map(|&id| get_item(id)))
-                .await
-                .into_iter()
-                .filter(|res| res.is_ok())
-                .map(|res| res.unwrap())
-                .collect::<Vec<_>>();
+            match &rx_topic {
+                ChannelAction::Story(topic) => {
+                    last_topic = Some(*topic);
 
-            if *rx_topic.borrow() == last_topic.unwrap() {
-                tx.send(Some(responses)).unwrap();
+                    let list = get_stories(*topic).await.unwrap();
+                    let responses = join_all(list.iter().map(|&id| get_item(id)))
+                        .await
+                        .into_iter()
+                        .filter(|res| res.is_ok())
+                        .map(|res| res.unwrap())
+                        .collect::<Vec<_>>();
+
+                    if *topic == last_topic.unwrap() {
+                        tx_data.send(ChannelData::Story(Some(responses))).unwrap();
+                    }
+                }
+                ChannelAction::Items(item) => {
+                    last_item = Some(item.clone());
+                    if !item.is_empty() {
+                        let responses = join_all(item.iter().map(|&id| get_item(id)))
+                            .await
+                            .into_iter()
+                            .filter(|res| res.is_ok())
+                            .map(|res| res.unwrap())
+                            .collect::<Vec<_>>();
+                        tx_data.send(ChannelData::Comment(Some(responses))).unwrap();
+                    }
+                }
             }
+
             sleep(Duration::from_millis(300)).await;
         }
     });
@@ -87,13 +128,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tx_stop.send(false).unwrap();
                     break;
                 } else {
-                    app.handle_event(key);
+                    app.handle_event(key, tx_aciton.clone());
                 }
             }
         }
 
         terminal.draw(|f| {
-            app.draw(f).unwrap();
+            app.draw(f, rx_data.clone()).unwrap();
         })?;
 
         app.update_data();

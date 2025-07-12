@@ -3,10 +3,17 @@ use std::io::Result;
 use crossterm::event::KeyCode;
 use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{
-    style::{Color, Style, Stylize}, text::{Line, Span}, widgets::{block::Title, Block, BorderType, List, ListItem}, Frame
+    Frame,
+    layout::Rect,
+    style::{Color, Style, Stylize},
+    text::{Line, Span},
+    widgets::{Block, BorderType, List, ListItem, block::Title},
 };
+use tokio::sync::watch;
 
-use crate::components::{Component, Loading};
+use crate::{
+    components::{Component, Loading}, ChannelAction, ChannelData
+};
 
 pub struct ListBlock {
     pub data: Vec<ItemResponse>,
@@ -64,7 +71,12 @@ impl ListBlock {
 }
 
 impl Component for ListBlock {
-    fn draw(&mut self, f: &mut Frame, rect: ratatui::layout::Rect) -> Result<()> {
+    fn draw(
+        &mut self,
+        f: &mut Frame,
+        rect: Rect,
+        _data: watch::Receiver<ChannelData>,
+    ) -> Result<()> {
         let height = rect.height as usize;
         let left_block = Block::bordered()
             .border_type(BorderType::Rounded)
@@ -93,7 +105,8 @@ impl Component for ListBlock {
             .iter()
             .enumerate()
             .map(|(idx, item)| {
-                let mut list_item = ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
+                let mut list_item =
+                    ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
                 if idx == self.selected.try_into().unwrap_or(0) {
                     list_item = list_item.style(Style::default().bg(Color::Blue));
                 }
@@ -121,7 +134,7 @@ impl Component for ListBlock {
         Ok(())
     }
 
-    fn event(&mut self, key: crossterm::event::KeyEvent) {
+    fn event(&mut self, key: crossterm::event::KeyEvent, _action: watch::Sender<ChannelAction>) {
         if key.code == KeyCode::Char('j') {
             self.selected = self
                 .selected

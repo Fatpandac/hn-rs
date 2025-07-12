@@ -10,8 +10,9 @@ use ratatui::{
     style::{Style, Stylize},
     widgets::{Block, BorderType, Paragraph},
 };
+use tokio::sync::watch;
 
-use crate::{components::Component, panels::Comment};
+use crate::{components::Component, panels::Comment, ChannelAction, ChannelData};
 
 pub struct Article {
     pub data: Option<ItemResponse>,
@@ -23,11 +24,16 @@ pub struct Article {
 }
 
 impl Component for Article {
-    fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
+    fn draw(
+        &mut self,
+        f: &mut Frame,
+        rect: Rect,
+        data: watch::Receiver<ChannelData>,
+    ) -> Result<()> {
         let vertical = Layout::vertical(if self.comment.focus {
             [
-                ratatui::layout::Constraint::Percentage(50),
-                ratatui::layout::Constraint::Percentage(50),
+                ratatui::layout::Constraint::Percentage(30),
+                ratatui::layout::Constraint::Percentage(70),
             ]
         } else {
             [
@@ -62,11 +68,11 @@ impl Component for Article {
         .scroll((self.scroll_offset, 0));
 
         f.render_widget(article, top);
-        self.comment.draw(f, bottom)?;
+        self.comment.draw(f, bottom, data)?;
         Ok(())
     }
 
-    fn event(&mut self, key: KeyEvent) {
+    fn event(&mut self, key: KeyEvent, action: watch::Sender<ChannelAction>) {
         if self.focus {
             if key.code == KeyCode::Char('j') {
                 self.scroll(false);
@@ -83,13 +89,23 @@ impl Component for Article {
             } else if key.code == KeyCode::Char('c') {
                 self.comment.focus = true;
                 self.focus = false;
+                if self.data.is_some() {
+                    action
+                        .send(ChannelAction::Items(
+                            self.data.clone().unwrap().kids.unwrap_or_default(),
+                        ))
+                        .unwrap();
+                }
             }
         } else {
             if key.code == KeyCode::Char('c') {
                 self.comment.focus = false;
                 self.focus = true;
+                action
+                    .send(ChannelAction::Items(Vec::new()))
+                    .unwrap();
             }
-            self.comment.event(key);
+            self.comment.event(key, action);
         }
     }
 }
