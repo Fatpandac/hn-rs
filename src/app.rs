@@ -43,6 +43,9 @@ impl APP {
     }
 
     pub fn handle_event(&mut self, key: KeyEvent) {
+        let switch_to_left_block = (key.code == KeyCode::Char('h') || key.code == KeyCode::Esc) && self.right_block.focus;
+        let switch_to_right_block = (key.code == KeyCode::Char('l') || key.code == KeyCode::Enter) && self.left_block.focus;
+
         if self.focus == 0 {
             self.left_block.event(key);
 
@@ -52,11 +55,11 @@ impl APP {
         } else if self.focus == 1 {
             self.right_block.event(key);
         }
-        if (key.code == KeyCode::Char('h') || key.code == KeyCode::Esc) && self.right_block.focus {
+        if switch_to_left_block  {
             self.focus = 0;
             self.left_block.focus = true;
             self.right_block.focus = false;
-        } else if (key.code == KeyCode::Char('l') || key.code == KeyCode::Enter) && self.left_block.focus {
+        } else if switch_to_right_block {
             if self.left_block.data.is_empty() {
                 return;
             }
