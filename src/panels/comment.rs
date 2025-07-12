@@ -68,7 +68,7 @@ impl Component for Comment {
                             .collect::<Vec<_>>()
                             .join("<br><br>")
                             .as_bytes(),
-                        rect.width.into(),
+                        (rect.width - 2).into(),
                     )
                     .unwrap()
             }

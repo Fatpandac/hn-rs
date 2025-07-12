@@ -169,7 +169,7 @@ impl Article {
                                 .as_deref()
                                 .unwrap_or("No content available")
                                 .as_bytes(),
-                            self.block_width.into()
+                                (self.block_width - 2).into()
                         )
                         .unwrap()
                 )
