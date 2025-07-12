@@ -22,7 +22,7 @@ pub fn firebase() -> Arc<Firebase> {
     FIREBASE.clone()
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum StoryType {
     Top,
     New,

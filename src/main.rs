@@ -8,13 +8,14 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use futures::future::join_all;
 use hackernews::{
     StoryType,
     get_items::{ItemResponse, get_item},
     get_stories::get_stories,
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use tokio::sync::watch;
+use tokio::{sync::watch, time::sleep};
 
 use crate::app::APP;
 
@@ -45,33 +46,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     setup_terminal()?;
     let _ = terminal.clear();
 
+    let (tx_stop, rx_stop) = watch::channel::<bool>(true);
     let (tx_topic, rx_topic) = watch::channel::<StoryType>(StoryType::Show);
-    let (tx, rx) = watch::channel::<Option<ItemResponse>>(None);
+    let (tx, rx) = watch::channel::<Option<Vec<ItemResponse>>>(None);
 
     let mut app = APP::new(tx_topic.clone(), rx.clone());
 
     tokio::spawn(async move {
         let mut last_topic: Option<StoryType> = None;
 
-        loop {
-            if last_topic == Some(*rx_topic.borrow()) {
-                continue;
-            }
-
-            let topic = rx_topic.borrow().clone();
+        while rx_stop.borrow().clone() {
+            if let Some(last) = last_topic {
+                if *rx_topic.borrow() == last {
+                    continue;
+                } else {
+                    tx.send(None).unwrap();
+                }
+            } 
+            let topic = *rx_topic.borrow();
             last_topic = Some(topic);
 
             let list = get_stories(topic).await.unwrap();
+            let responses = join_all(list.iter().map(|&id| get_item(id)))
+                .await
+                .into_iter()
+                .map(|res| res.unwrap())
+                .collect::<Vec<_>>();
 
-            for &id in list.iter().take(30) {
-                let res = get_item(id).await.unwrap();
-                if last_topic != Some(*rx_topic.borrow()) {
-                    let _ = tx.send(None);
-                    break;
-                } else {
-                    let _ = tx.send(Some(res));
-                }
-            }
+            tx.send(Some(responses)).unwrap();
+            sleep(Duration::from_millis(300)).await;
         }
     });
 
@@ -79,6 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.code == KeyCode::Char('q') {
+                    tx_stop.send(false).unwrap();
                     break;
                 } else {
                     app.handle_event(key);

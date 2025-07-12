@@ -10,13 +10,13 @@ pub struct APP {
     left_block: ListBlock,
     focus: isize,
     tx_topic: watch::Sender<StoryType>,
-    rx_item: watch::Receiver<Option<ItemResponse>>,
+    rx_item: watch::Receiver<Option<Vec<ItemResponse>>>,
 }
 
 impl APP {
     pub fn new(
         tx_topic: watch::Sender<StoryType>,
-        rx_item: watch::Receiver<Option<ItemResponse>>,
+        rx_item: watch::Receiver<Option<Vec<ItemResponse>>>,
     ) -> Self {
         Self {
             right_block: Article::new(None, false, 0),
@@ -29,11 +29,12 @@ impl APP {
 
     pub fn update_data(&mut self) {
         if let Some(item) = self.rx_item.borrow().clone() {
-            if self.left_block.data.last() != Some(&item) {
-                self.left_block.data.push(item);
-                self.right_block
-                    .set_data(self.left_block.data.get(self.left_block.selected).cloned());
+            if item.last().is_some() && item.last() == self.left_block.data.last() {
+                return;
             }
+            self.left_block.data.extend(item);
+            self.right_block
+                .set_data(self.left_block.data.get(self.left_block.selected).cloned());
         } else {
             self.left_block.reset();
             self.right_block.set_data(None);
