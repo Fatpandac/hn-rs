@@ -3,8 +3,8 @@ use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{Frame, layout::Layout};
 use tokio::sync::watch;
 
-use crate::panels::{Article, ListBlock};
 use crate::components::Component;
+use crate::panels::{Article, ListBlock};
 
 pub struct APP {
     right_block: Article,
@@ -52,11 +52,14 @@ impl APP {
         } else if self.focus == 1 {
             self.right_block.event(key);
         }
-        if key.code == KeyCode::Char('h') || key.code == KeyCode::Esc {
+        if (key.code == KeyCode::Char('h') || key.code == KeyCode::Esc) && self.right_block.focus {
             self.focus = 0;
             self.left_block.focus = true;
             self.right_block.focus = false;
-        } else if key.code == KeyCode::Char('l') || key.code == KeyCode::Enter {
+        } else if (key.code == KeyCode::Char('l') || key.code == KeyCode::Enter) && self.left_block.focus {
+            if self.left_block.data.is_empty() {
+                return;
+            }
             self.focus = 1;
             self.left_block.focus = false;
             self.right_block.focus = true;

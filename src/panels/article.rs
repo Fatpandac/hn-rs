@@ -6,12 +6,12 @@ use hackernews::get_items::ItemResponse;
 use html2text::config;
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Layout, Rect},
     style::{Style, Stylize},
     widgets::{Block, BorderType, Paragraph},
 };
 
-use crate::components::Component;
+use crate::{components::Component, panels::Comment};
 
 pub struct Article {
     pub data: Option<ItemResponse>,
@@ -19,12 +19,26 @@ pub struct Article {
     scroll_offset: u16,
     block_height: u16,
     block_width: u16,
+    comment: Comment,
 }
 
 impl Component for Article {
     fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
-        self.block_height = rect.height;
-        self.block_width = rect.width;
+        let vertical = Layout::vertical(if self.comment.focus {
+            [
+                ratatui::layout::Constraint::Percentage(50),
+                ratatui::layout::Constraint::Percentage(50),
+            ]
+        } else {
+            [
+                ratatui::layout::Constraint::Percentage(100),
+                ratatui::layout::Constraint::Percentage(0),
+            ]
+        });
+        let [top, bottom] = vertical.areas(rect);
+        self.block_height = top.height;
+        self.block_width = top.width;
+
         let right_block = Block::bordered()
             .border_type(BorderType::Rounded)
             .border_style({
@@ -34,7 +48,7 @@ impl Component for Article {
                     Style::new()
                 }
             })
-            .title("Content");
+            .title("Article");
 
         let article = Paragraph::new(
             self.data
@@ -47,23 +61,35 @@ impl Component for Article {
         .block(right_block)
         .scroll((self.scroll_offset, 0));
 
-        f.render_widget(article, rect);
+        f.render_widget(article, top);
+        self.comment.draw(f, bottom)?;
         Ok(())
     }
 
     fn event(&mut self, key: KeyEvent) {
-        if key.code == KeyCode::Char('j') {
-            self.scroll(false);
-        } else if key.code == KeyCode::Char('k') {
-            self.scroll(true);
-        } else if key.code == KeyCode::Char('o') {
-            if let Some(item) = &self.data {
-                if let Some(url) = &item.url {
-                    if let Err(e) = open::that(url) {
-                        eprintln!("Failed to open URL: {}", e);
+        if self.focus {
+            if key.code == KeyCode::Char('j') {
+                self.scroll(false);
+            } else if key.code == KeyCode::Char('k') {
+                self.scroll(true);
+            } else if key.code == KeyCode::Char('o') {
+                if let Some(item) = &self.data {
+                    if let Some(url) = &item.url {
+                        if let Err(e) = open::that(url) {
+                            eprintln!("Failed to open URL: {}", e);
+                        }
                     }
                 }
+            } else if key.code == KeyCode::Char('c') {
+                self.comment.focus = true;
+                self.focus = false;
             }
+        } else {
+            if key.code == KeyCode::Char('c') {
+                self.comment.focus = false;
+                self.focus = true;
+            }
+            self.comment.event(key);
         }
     }
 }
@@ -76,6 +102,7 @@ impl Article {
             scroll_offset,
             block_height: 0,
             block_width: 0,
+            comment: Comment::new(Vec::new()),
         }
     }
 
@@ -83,7 +110,11 @@ impl Article {
         if self.data == data {
             return;
         }
-        self.data = data;
+        self.data = data.clone();
+        self.comment = Comment::new(
+            data.as_ref()
+                .map_or(Vec::new(), |item| item.kids.clone().unwrap_or_default()),
+        );
         self.scroll_offset = 0;
     }
 

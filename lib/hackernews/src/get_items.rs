@@ -25,7 +25,7 @@ pub struct ItemResponse {
     dead: Option<bool>,
     parent: Option<usize>,
     poll: Option<usize>,
-    kids: Option<Vec<usize>>,
+    pub kids: Option<Vec<usize>>,
     pub url: Option<String>,
     score: Option<usize>,
     pub title: Option<String>,
