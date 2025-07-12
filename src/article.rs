@@ -56,6 +56,14 @@ impl Component for Article {
             self.scroll(false);
         } else if key.code == KeyCode::Char('k') {
             self.scroll(true);
+        } else if key.code == KeyCode::Char('o') {
+            if let Some(item) = &self.data {
+                if let Some(url) = &item.url {
+                    if let Err(e) = open::that(url) {
+                        eprintln!("Failed to open URL: {}", e);
+                    }
+                }
+            }
         }
     }
 }
