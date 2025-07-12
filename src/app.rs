@@ -32,7 +32,7 @@ impl APP {
             if item.last().is_some() && item.last() == self.left_block.data.last() {
                 return;
             }
-            self.left_block.data.extend(item);
+            self.left_block.set_data(item);
             self.right_block
                 .set_data(self.left_block.data.get(self.left_block.selected).cloned());
         } else {

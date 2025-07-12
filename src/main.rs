@@ -23,6 +23,7 @@ mod app;
 mod article;
 mod component;
 mod list;
+mod loading;
 
 fn setup_terminal() -> std::io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     enable_raw_mode()?;
@@ -62,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else {
                     tx.send(None).unwrap();
                 }
-            } 
+            }
             let topic = *rx_topic.borrow();
             last_topic = Some(topic);
 
@@ -70,10 +71,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let responses = join_all(list.iter().map(|&id| get_item(id)))
                 .await
                 .into_iter()
+                .filter(|res| res.is_ok())
                 .map(|res| res.unwrap())
                 .collect::<Vec<_>>();
 
-            tx.send(Some(responses)).unwrap();
+            if *rx_topic.borrow() == last_topic.unwrap() {
+                tx.send(Some(responses)).unwrap();
+            }
             sleep(Duration::from_millis(300)).await;
         }
     });

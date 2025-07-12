@@ -3,13 +3,10 @@ use std::io::Result;
 use crossterm::event::KeyCode;
 use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{
-    Frame,
-    style::{Color, Style, Stylize},
-    text::{Line, Span},
-    widgets::{Block, BorderType, List, ListItem},
+    style::{Color, Style, Stylize}, text::{Line, Span}, widgets::{block::Title, Block, BorderType, List, ListItem}, Frame
 };
 
-use crate::component::Component;
+use crate::{component::Component, loading::Loading};
 
 pub struct ListBlock {
     pub data: Vec<ItemResponse>,
@@ -17,6 +14,7 @@ pub struct ListBlock {
     pub topic: StoryType,
     pub focus: bool,
     list_top_cursor: usize,
+    loading: Loading,
 }
 
 impl ListBlock {
@@ -27,6 +25,7 @@ impl ListBlock {
             focus,
             selected,
             list_top_cursor: 0,
+            loading: Loading::new(),
         }
     }
 
@@ -50,7 +49,15 @@ impl ListBlock {
         };
     }
 
+    pub fn set_data(&mut self, data: Vec<ItemResponse>) {
+        self.data = data;
+        self.selected = 0;
+        self.list_top_cursor = 0;
+        self.loading.set_loading(false);
+    }
+
     pub fn reset(&mut self) {
+        self.loading.set_loading(true);
         self.data.clear();
         self.selected = 0;
     }
@@ -68,7 +75,8 @@ impl Component for ListBlock {
                     Style::new()
                 }
             })
-            .title(Line::from(vec![
+            .title(Title::from(Line::from(vec![
+                self.loading.to_span().unwrap_or(Span::raw("")),
                 Span::raw("<"),
                 Span::styled("T", Style::default().fg(Color::Red)),
                 Span::raw(format!(
@@ -78,7 +86,7 @@ impl Component for ListBlock {
                         .saturating_add(if self.data.is_empty() { 0 } else { 1 }),
                     self.data.len()
                 )),
-            ]));
+            ])));
 
         let list_items = self
             .data
