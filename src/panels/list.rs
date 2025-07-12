@@ -6,7 +6,7 @@ use ratatui::{
     style::{Color, Style, Stylize}, text::{Line, Span}, widgets::{block::Title, Block, BorderType, List, ListItem}, Frame
 };
 
-use crate::{component::Component, loading::Loading};
+use crate::components::{Component, Loading};
 
 pub struct ListBlock {
     pub data: Vec<ItemResponse>,

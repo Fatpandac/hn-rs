@@ -20,10 +20,8 @@ use tokio::{sync::watch, time::sleep};
 use crate::app::APP;
 
 mod app;
-mod article;
-mod component;
-mod list;
-mod loading;
+mod components;
+mod panels;
 
 fn setup_terminal() -> std::io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     enable_raw_mode()?;

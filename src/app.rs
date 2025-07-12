@@ -3,7 +3,8 @@ use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{Frame, layout::Layout};
 use tokio::sync::watch;
 
-use crate::{article::Article, component::Component, list::ListBlock};
+use crate::panels::{Article, ListBlock};
+use crate::components::Component;
 
 pub struct APP {
     right_block: Article,

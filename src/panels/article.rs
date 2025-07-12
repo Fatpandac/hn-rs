@@ -11,7 +11,7 @@ use ratatui::{
     widgets::{Block, BorderType, Paragraph},
 };
 
-use crate::component::Component;
+use crate::components::Component;
 
 pub struct Article {
     pub data: Option<ItemResponse>,
