@@ -80,10 +80,19 @@ impl APP {
         f: &mut Frame,
         data: watch::Receiver<ChannelData>,
     ) -> std::io::Result<()> {
-        let horizontal = Layout::horizontal([
-            ratatui::layout::Constraint::Percentage(30),
-            ratatui::layout::Constraint::Percentage(70),
-        ]);
+        let horizontal = Layout::horizontal({
+            if self.left_block.focus {
+                [
+                    ratatui::layout::Constraint::Percentage(80),
+                    ratatui::layout::Constraint::Percentage(20),
+                ]
+            } else {
+                [
+                    ratatui::layout::Constraint::Percentage(20),
+                    ratatui::layout::Constraint::Percentage(80),
+                ]
+            }
+        });
         let [left, right] = horizontal.areas(f.area());
 
         self.left_block.draw(f, left, data.clone())?;

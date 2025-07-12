@@ -5,10 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use hackernews::get_items::ItemResponse;
 use html2text::config;
 use ratatui::{
-    Frame,
-    layout::{Layout, Rect},
-    style::{Style, Stylize},
-    widgets::{Block, BorderType, Paragraph},
+    layout::{Layout, Rect}, style::{Style, Stylize}, widgets::{Block, BorderType, Paragraph, Wrap}, Frame
 };
 use tokio::sync::watch;
 
@@ -63,7 +60,7 @@ impl Component for Article {
                     self.generate_content()
                 }),
         )
-        .wrap(ratatui::widgets::Wrap { trim: true })
+        .wrap(Wrap { trim: true })
         .block(right_block)
         .scroll((self.scroll_offset, 0));
 
