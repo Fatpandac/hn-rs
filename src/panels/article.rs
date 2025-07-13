@@ -5,16 +5,22 @@ use crossterm::event::{KeyCode, KeyEvent};
 use hackernews::get_items::ItemResponse;
 use html2text::config;
 use ratatui::{
-    layout::{Layout, Rect}, style::{Style, Stylize}, widgets::{Block, BorderType, Paragraph, Wrap}, Frame
+    Frame,
+    layout::{Layout, Rect},
+    prelude::Color,
+    style::{Style, Stylize},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Paragraph, Wrap},
 };
 use tokio::sync::watch;
 
-use crate::{components::Component, panels::Comment, ChannelAction, ChannelData};
+use crate::{ChannelAction, ChannelData, components::Component, panels::Comment};
 
 pub struct Article {
     pub data: Option<ItemResponse>,
     pub focus: bool,
     scroll_offset: u16,
+    scroll_offset_backup: u16,
     block_height: u16,
     block_width: u16,
     comment: Comment,
@@ -29,8 +35,8 @@ impl Component for Article {
     ) -> Result<()> {
         let vertical = Layout::vertical(if self.comment.focus {
             [
-                ratatui::layout::Constraint::Percentage(30),
-                ratatui::layout::Constraint::Percentage(70),
+                ratatui::layout::Constraint::Percentage(20),
+                ratatui::layout::Constraint::Percentage(80),
             ]
         } else {
             [
@@ -39,8 +45,8 @@ impl Component for Article {
             ]
         });
         let [top, bottom] = vertical.areas(rect);
-        self.block_height = top.height;
-        self.block_width = top.width;
+        self.block_height = top.height.saturating_sub(2);
+        self.block_width = top.width.saturating_sub(2);
 
         let right_block = Block::bordered()
             .border_type(BorderType::Rounded)
@@ -51,7 +57,17 @@ impl Component for Article {
                     Style::new()
                 }
             })
-            .title("Article");
+            .title("Article")
+            .title_bottom(Line::from({
+                if self.focus {
+                    vec![
+                        Span::styled("C", Style::default().fg(Color::Red)),
+                        Span::raw("omments"),
+                    ]
+                } else {
+                    vec![]
+                }
+            }));
 
         let article = Paragraph::new(
             self.data
@@ -86,6 +102,8 @@ impl Component for Article {
             } else if key.code == KeyCode::Char('c') {
                 self.comment.focus = true;
                 self.focus = false;
+                self.scroll_offset_backup = self.scroll_offset;
+                self.scroll_offset = 0;
                 if self.data.is_some() {
                     action
                         .send(ChannelAction::Items(
@@ -98,9 +116,9 @@ impl Component for Article {
             if key.code == KeyCode::Char('c') {
                 self.comment.focus = false;
                 self.focus = true;
-                action
-                    .send(ChannelAction::Items(Vec::new()))
-                    .unwrap();
+                self.scroll_offset = self.scroll_offset_backup;
+                self.scroll_offset_backup = 0;
+                action.send(ChannelAction::Items(Vec::new())).unwrap();
             }
             self.comment.event(key, action);
         }
@@ -108,11 +126,12 @@ impl Component for Article {
 }
 
 impl Article {
-    pub fn new(data: Option<ItemResponse>, focus: bool, scroll_offset: u16) -> Self {
+    pub fn new(data: Option<ItemResponse>, focus: bool) -> Self {
         Self {
             data,
             focus,
-            scroll_offset,
+            scroll_offset: 0,
+            scroll_offset_backup: 0,
             block_height: 0,
             block_width: 0,
             comment: Comment::new(Vec::new()),
@@ -132,22 +151,21 @@ impl Article {
     }
 
     pub fn scroll(&mut self, up: bool) {
-        let padding = 2;
         let content_height = {
             let content = self.generate_content();
             content.lines().fold(0, |acc, line| {
                 acc + (line.len() as u16 / self.block_width).saturating_add(1)
-            }) + padding
+            })
         };
         self.scroll_offset = {
             if up {
                 self.scroll_offset.saturating_sub(1)
-            } else if self.scroll_offset + self.block_height < content_height + padding {
+            } else if self.scroll_offset + self.block_height < content_height {
                 self.scroll_offset.saturating_add(1)
             } else {
                 self.scroll_offset
             }
-        }
+        };
     }
 
     fn generate_content(&self) -> String {
@@ -164,12 +182,14 @@ impl Article {
                         .to_string(),
                     item.url.as_deref().unwrap_or("No URL"),
                     config::plain()
+                        .link_footnotes(false)
+                        .no_link_wrapping()
                         .string_from_read(
                             item.text
                                 .as_deref()
                                 .unwrap_or("No content available")
                                 .as_bytes(),
-                                (self.block_width - 2).into()
+                            (self.block_width - 2).into()
                         )
                         .unwrap()
                 )

@@ -25,12 +25,12 @@ pub struct ListBlock {
 }
 
 impl ListBlock {
-    pub fn new(data: Vec<ItemResponse>, selected: usize, topic: StoryType, focus: bool) -> Self {
+    pub fn new(data: Vec<ItemResponse>, topic: StoryType, focus: bool) -> Self {
         Self {
             data,
             topic,
             focus,
-            selected,
+            selected: 0,
             list_top_cursor: 0,
             loading: Loading::new(),
         }

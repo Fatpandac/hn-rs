@@ -20,8 +20,8 @@ impl APP {
         rx_data: watch::Receiver<ChannelData>,
     ) -> Self {
         Self {
-            right_block: Article::new(None, false, 0),
-            left_block: ListBlock::new(Vec::new(), 0, hackernews::StoryType::Show, true),
+            right_block: Article::new(None, false),
+            left_block: ListBlock::new(Vec::new(), hackernews::StoryType::Show, true),
             focus: 0,
             tx_action,
             rx_data,
@@ -81,16 +81,15 @@ impl APP {
         data: watch::Receiver<ChannelData>,
     ) -> std::io::Result<()> {
         let horizontal = Layout::horizontal({
+            let default_layout = vec![
+                ratatui::layout::Constraint::Percentage(80),
+                ratatui::layout::Constraint::Percentage(20),
+            ];
+
             if self.left_block.focus {
-                [
-                    ratatui::layout::Constraint::Percentage(80),
-                    ratatui::layout::Constraint::Percentage(20),
-                ]
+                default_layout
             } else {
-                [
-                    ratatui::layout::Constraint::Percentage(20),
-                    ratatui::layout::Constraint::Percentage(80),
-                ]
+                default_layout.iter().cloned().rev().collect()
             }
         });
         let [left, right] = horizontal.areas(f.area());
