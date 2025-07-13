@@ -74,12 +74,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(last) = last_topic {
                 if let ChannelAction::Story(topic) = rx_topic {
                     if topic == last {
+                        sleep(Duration::from_millis(300)).await;
                         continue;
                     } else {
                         tx_data.send(ChannelData::Story(None)).unwrap();
                     }
                 } else if let ChannelAction::Items(ref items) = rx_topic {
                     if *items == last_item.clone().unwrap_or_default() {
+                        sleep(Duration::from_millis(300)).await;
                         continue;
                     } else {
                         tx_data.send(ChannelData::Comment(None)).unwrap();
