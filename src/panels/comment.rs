@@ -3,7 +3,12 @@ use std::io::Result;
 use crossterm::event::KeyEvent;
 use hackernews::get_items::ItemResponse;
 use html2text::config;
-use ratatui::{Frame, layout::Rect, style::Stylize, widgets::Paragraph};
+use ratatui::{
+    Frame,
+    layout::Rect,
+    style::Stylize,
+    widgets::{List, ListItem, Paragraph},
+};
 use tokio::sync::watch;
 
 use crate::{ChannelAction, ChannelData, components::Component};
@@ -45,36 +50,36 @@ impl Component for Comment {
                     ratatui::style::Style::new()
                 }
             });
-        let content = Paragraph::new({
-            if self.ids.len() == 0 {
-                "No comments available".into()
-            } else if self.data.is_none() {
-                "Loading Comments...".into()
-            } else {
-                config::plain()
-                    .string_from_read(
-                        self.data
-                            .as_ref()
-                            .unwrap()
-                            .iter()
-                            .filter(|item| item.by.is_some() && item.text.is_some())
-                            .map(|item| {
-                                format!(
-                                    "&lt;&lt;{}&gt;&gt;: {}",
-                                    item.by.clone().unwrap(),
-                                    item.text.clone().unwrap()
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                            .join("<br><br>")
-                            .as_bytes(),
-                        (rect.width - 2).into(),
+        let list = List::new(self.data.as_ref().map_or(vec![], |data| {
+            data.iter()
+                .filter(|item| item.by.is_some() && item.text.is_some())
+                .map(|item| {
+                    let text = format!(
+                        "&lt;&lt;{}&gt;&gt;: {}",
+                        item.by.clone().unwrap(),
+                        item.text.clone().unwrap()
+                    );
+                    ListItem::new(
+                        config::plain()
+                            .no_link_wrapping()
+                            .link_footnotes(false)
+                            .string_from_read(text.as_bytes(), (rect.width - 2).into())
+                            .unwrap(),
                     )
-                    .unwrap()
-            }
-        })
-        .block(block);
-        f.render_widget(content, rect);
+                    .style(ratatui::style::Style::new())
+                })
+                .collect::<Vec<_>>()
+        }))
+        .block(block.clone());
+
+        if self.ids.is_empty() {
+            f.render_widget(Paragraph::new("No comments available").block(block), rect);
+        } else if self.data.is_none() {
+            f.render_widget(Paragraph::new("Loading comments...").block(block), rect);
+        } else {
+            f.render_widget(list, rect);
+        };
+
         Ok(())
     }
 
