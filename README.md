@@ -22,6 +22,7 @@ Building a terminal-first Hacker News client felt like a great way to practice R
 # usage
 
 List panel:  
+- `Tab`/`S-Tab` - switch topic
 - `j`/`k` - navigate between the articles  
 - `l`/`Enter` - switch focus to the Article panel 
 
