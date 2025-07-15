@@ -178,8 +178,7 @@ impl Article {
                     item.by.as_deref().unwrap_or("Unknown"),
                     DateTime::from_timestamp(item.time as i64, 0)
                         .unwrap()
-                        .format("%Y-%m-%d %H:%M:%S")
-                        .to_string(),
+                        .format("%Y-%m-%d %H:%M:%S"),
                     item.url.as_deref().unwrap_or("No URL"),
                     config::plain()
                         .link_footnotes(false)

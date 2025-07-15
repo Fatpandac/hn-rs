@@ -1,7 +1,6 @@
 use std::{
     io::{self, stdout},
     time::Duration,
-    usize,
 };
 
 use crossterm::{
@@ -18,7 +17,7 @@ use hackernews::{
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use tokio::{sync::watch, task::JoinHandle, time::sleep};
 
-use crate::app::APP;
+use crate::app::App;
 
 mod app;
 mod components;
@@ -63,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         watch::channel::<ChannelAction>(ChannelAction::Story(StoryType::Show));
     let (tx_data, rx_data) = watch::channel::<ChannelData>(ChannelData::Story(None));
 
-    let mut app = APP::new(tx_aciton.clone(), rx_data.clone());
+    let mut app = App::new(tx_aciton.clone(), rx_data.clone());
 
     tokio::spawn(async move {
         let mut last_topic: Option<StoryType> = None;

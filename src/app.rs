@@ -6,7 +6,7 @@ use crate::components::Component;
 use crate::panels::{Article, ListBlock};
 use crate::{ChannelAction, ChannelData};
 
-pub struct APP {
+pub struct App {
     right_block: Article,
     left_block: ListBlock,
     focus: isize,
@@ -14,7 +14,7 @@ pub struct APP {
     rx_data: watch::Receiver<ChannelData>,
 }
 
-impl APP {
+impl App {
     pub fn new(
         tx_action: watch::Sender<ChannelAction>,
         rx_data: watch::Receiver<ChannelData>,

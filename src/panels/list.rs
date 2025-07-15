@@ -88,12 +88,12 @@ impl Component for ListBlock {
                 }
             })
             .title(Title::from(Line::from(vec![
-                self.loading.to_span().unwrap_or(Span::raw("")),
+                self.loading.to_span_mut().unwrap_or(Span::raw("")),
                 Span::raw("<"),
                 Span::styled("T", Style::default().fg(Color::Red)),
                 Span::raw(format!(
                     " - {}({}/{})>",
-                    self.topic.to_string(),
+                    self.topic,
                     self.selected
                         .saturating_add(if self.data.is_empty() { 0 } else { 1 }),
                     self.data.len()
@@ -107,7 +107,7 @@ impl Component for ListBlock {
             .map(|(idx, item)| {
                 let mut list_item =
                     ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
-                if idx == self.selected.try_into().unwrap_or(0) {
+                if idx == self.selected {
                     list_item = list_item.style(Style::default().bg(Color::Blue));
                 }
 
@@ -115,7 +115,7 @@ impl Component for ListBlock {
             })
             .collect::<Vec<_>>();
 
-        let list_len: usize = list_items.len().try_into().unwrap_or(0);
+        let list_len: usize = list_items.len();
         if self.selected < self.list_top_cursor {
             self.list_top_cursor = self.list_top_cursor.saturating_sub(1);
         } else if self.selected >= self.list_top_cursor + height.saturating_sub(2)
@@ -125,8 +125,6 @@ impl Component for ListBlock {
         }
         let top: usize = self.list_top_cursor;
         let bottom: usize = (self.selected + height)
-            .try_into()
-            .unwrap_or(0)
             .min(list_items.len());
         let list = List::new(list_items[top..bottom].to_vec()).block(left_block);
 

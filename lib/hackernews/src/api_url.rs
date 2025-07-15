@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use once_cell::sync::Lazy;
 
@@ -35,15 +35,16 @@ pub enum StoryType {
     Jobs,
 }
 
-impl ToString for StoryType {
-    fn to_string(&self) -> String {
-        match self {
-            StoryType::Top => "Top Stories".to_string(),
-            StoryType::New => "New Stories".to_string(),
-            StoryType::Show => "Show Stories".to_string(),
-            StoryType::Best => "Best Stories".to_string(),
-            StoryType::Jobs => "Job Stories".to_string(),
-        }
+impl Display for StoryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let topic = match self {
+            StoryType::Top => "Top",
+            StoryType::New => "New",
+            StoryType::Show => "Show",
+            StoryType::Best => "Best",
+            StoryType::Jobs => "Jobs",
+        };
+        write!(f, "{}", topic)
     }
 }
 

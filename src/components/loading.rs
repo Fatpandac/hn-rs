@@ -40,7 +40,7 @@ impl Loading {
         self.is_loading = loading;
     }
 
-    pub fn to_span(&mut self) -> Option<Span> {
+    pub fn to_span_mut(&mut self) -> Option<Span> {
         if !self.is_loading {
             return None;
         }
