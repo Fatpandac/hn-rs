@@ -25,6 +25,7 @@ List panel:
 - `Tab`/`S-Tab` - switch topic
 - `j`/`k` - navigate between the articles  
 - `l`/`Enter` - switch focus to the Article panel 
+- `C-f`/`C-b` - scroll page up/down
 
 Article panel:  
 - `j`/`k` - scroll the view  

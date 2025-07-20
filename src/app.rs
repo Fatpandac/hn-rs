@@ -36,7 +36,7 @@ impl App {
                 }
                 self.left_block.set_data(items);
                 self.right_block
-                    .set_data(self.left_block.data.get(self.left_block.selected).cloned());
+                    .set_data(self.left_block.data.get(self.left_block.selected as usize).cloned());
             } else {
                 self.left_block.reset();
                 self.right_block.set_data(None);
@@ -54,7 +54,7 @@ impl App {
             self.left_block.event(key, action);
 
             self.right_block
-                .set_data(self.left_block.data.get(self.left_block.selected).cloned());
+                .set_data(self.left_block.data.get(self.left_block.selected as usize).cloned());
             self.tx_action
                 .send(ChannelAction::Story(self.left_block.topic))
                 .unwrap();

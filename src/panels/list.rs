@@ -1,6 +1,6 @@
-use std::io::Result;
+use std::{io::Result, usize};
 
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{
     Frame,
@@ -12,16 +12,18 @@ use ratatui::{
 use tokio::sync::watch;
 
 use crate::{
-    components::{Component, Loading}, ChannelAction, ChannelData
+    ChannelAction, ChannelData,
+    components::{Component, Loading},
 };
 
 pub struct ListBlock {
     pub data: Vec<ItemResponse>,
-    pub selected: usize,
+    pub selected: u16,
     pub topic: StoryType,
     pub focus: bool,
-    list_top_cursor: usize,
+    list_top_cursor: u16,
     loading: Loading,
+    height: u16,
 }
 
 impl ListBlock {
@@ -32,6 +34,7 @@ impl ListBlock {
             focus,
             selected: 0,
             list_top_cursor: 0,
+            height: 0,
             loading: Loading::new(),
         }
     }
@@ -77,7 +80,7 @@ impl Component for ListBlock {
         rect: Rect,
         _data: watch::Receiver<ChannelData>,
     ) -> Result<()> {
-        let height = rect.height as usize;
+        self.height = rect.height.saturating_sub(2);
         let left_block = Block::bordered()
             .border_type(BorderType::Rounded)
             .border_style({
@@ -107,7 +110,7 @@ impl Component for ListBlock {
             .map(|(idx, item)| {
                 let mut list_item =
                     ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
-                if idx == self.selected {
+                if idx == self.selected as usize {
                     list_item = list_item.style(Style::default().bg(Color::Blue));
                 }
 
@@ -115,17 +118,22 @@ impl Component for ListBlock {
             })
             .collect::<Vec<_>>();
 
-        let list_len: usize = list_items.len();
+        let list_len: u16 = list_items.len() as u16;
         if self.selected < self.list_top_cursor {
-            self.list_top_cursor = self.list_top_cursor.saturating_sub(1);
-        } else if self.selected >= self.list_top_cursor + height.saturating_sub(2)
-            && self.selected < list_len
-        {
-            self.list_top_cursor = self.list_top_cursor.saturating_add(1);
+            self.list_top_cursor = self
+                .list_top_cursor
+                .saturating_sub(self.list_top_cursor.saturating_sub(self.selected));
+        } else if self.selected >= self.list_top_cursor + self.height {
+            self.list_top_cursor = self
+                .list_top_cursor
+                .saturating_add(
+                    self.selected
+                        .saturating_sub(self.list_top_cursor + self.height.saturating_sub(1)),
+                )
+                .min(list_len);
         }
-        let top: usize = self.list_top_cursor;
-        let bottom: usize = (self.selected + height)
-            .min(list_items.len());
+        let top: usize = self.list_top_cursor.into();
+        let bottom: usize = (self.selected + self.height).min(list_len).into();
         let list = List::new(list_items[top..bottom].to_vec()).block(left_block);
 
         f.render_widget(list, rect);
@@ -137,9 +145,16 @@ impl Component for ListBlock {
             self.selected = self
                 .selected
                 .saturating_add(1)
-                .min(self.data.len().saturating_sub(1));
+                .min(self.data.len().saturating_sub(1) as u16);
         } else if key.code == KeyCode::Char('k') {
             self.selected = self.selected.saturating_sub(1);
+        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('b') {
+            self.selected = self.selected.saturating_sub(self.height);
+        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('f') {
+            self.selected = self
+                .selected
+                .saturating_add(self.height)
+                .min(self.data.len().saturating_sub(1) as u16);
         } else if key.code == KeyCode::Tab {
             self.next_topic();
         } else if key.code == KeyCode::BackTab {
