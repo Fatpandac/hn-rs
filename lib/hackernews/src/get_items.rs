@@ -1,7 +1,10 @@
 use firebase_rs::RequestError;
 use serde::{Deserialize, Serialize};
 
-use crate::{api_url::{firebase, get_item_url}, cache::CacheItemType};
+use crate::{
+    api_url::{firebase, get_item_url},
+    cache::CacheItemType,
+};
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 #[serde(rename_all = "lowercase")]

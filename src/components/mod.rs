@@ -1,5 +1,5 @@
-mod loading;
 mod component;
+mod loading;
 
-pub use loading::Loading;
 pub use component::Component;
+pub use loading::Loading;
