@@ -1,6 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 
 use crate::cache::FirebaseCache;
 
@@ -26,7 +27,7 @@ pub fn firebase() -> Arc<FirebaseCache> {
     FIREBASE.clone()
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash, Serialize, Deserialize)]
 pub enum StoryType {
     Top,
     New,

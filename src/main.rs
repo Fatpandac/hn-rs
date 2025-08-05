@@ -22,6 +22,7 @@ use crate::app::App;
 mod app;
 mod components;
 mod panels;
+mod storages;
 
 fn setup_terminal() -> std::io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     enable_raw_mode()?;

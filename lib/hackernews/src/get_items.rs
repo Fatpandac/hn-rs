@@ -19,7 +19,7 @@ pub enum ItemType {
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct ItemResponse {
-    id: usize,
+    pub id: usize,
     deleted: Option<bool>,
     r#type: ItemType,
     pub by: Option<String>,

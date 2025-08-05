@@ -77,9 +77,11 @@ impl App {
             if self.left_block.data.is_empty() {
                 return;
             }
-            self.focus = 1;
-            self.left_block.focus = false;
-            self.right_block.focus = true;
+            if self.left_block.set_readed().is_ok() {
+                self.focus = 1;
+                self.left_block.focus = false;
+                self.right_block.focus = true;
+            }
         }
     }
 

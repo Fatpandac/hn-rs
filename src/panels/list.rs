@@ -1,4 +1,4 @@
-use std::{io::Result, usize};
+use std::io::Result;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 use hackernews::{StoryType, get_items::ItemResponse};
@@ -14,6 +14,7 @@ use tokio::sync::watch;
 use crate::{
     ChannelAction, ChannelData,
     components::{Component, Loading},
+    storages::ReadHistory,
 };
 
 pub struct ListBlock {
@@ -24,6 +25,7 @@ pub struct ListBlock {
     list_top_cursor: u16,
     loading: Loading,
     height: u16,
+    readed_history: ReadHistory,
 }
 
 impl ListBlock {
@@ -36,6 +38,7 @@ impl ListBlock {
             list_top_cursor: 0,
             height: 0,
             loading: Loading::new(),
+            readed_history: ReadHistory::new(),
         }
     }
 
@@ -70,6 +73,13 @@ impl ListBlock {
         self.loading.set_loading(true);
         self.data.clear();
         self.selected = 0;
+    }
+
+    pub fn set_readed(&mut self) -> Result<()> {
+        let current_item = self.data.get(self.selected as usize).unwrap();
+        self.readed_history
+            .add_read_item(self.topic, current_item.id)?;
+        Ok(())
     }
 }
 
@@ -108,13 +118,17 @@ impl Component for ListBlock {
             .iter()
             .enumerate()
             .map(|(idx, item)| {
-                let mut list_item =
-                    ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
+                let is_readed = self.readed_history.id_is_readed(self.topic, item.id);
+                let list_item = ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
+                let mut style = Style::default().fg(Color::White);
+
                 if idx == self.selected as usize {
-                    list_item = list_item.style(Style::default().bg(Color::Blue));
+                    style = style.bg(Color::Blue);
+                } else if is_readed {
+                    style = style.fg(Color::DarkGray);
                 }
 
-                list_item
+                list_item.style(style)
             })
             .collect::<Vec<_>>();
 
