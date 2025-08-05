@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, io::Result};
+use std::{
+    collections::{HashMap, HashSet},
+    io::Result,
+};
 
 use hackernews::StoryType;
 use serde::{Deserialize, Serialize};
