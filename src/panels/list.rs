@@ -103,14 +103,16 @@ impl Component for ListBlock {
             .title(Title::from(Line::from(vec![
                 self.loading.to_span_mut().unwrap_or(Span::raw("")),
                 Span::raw("<"),
-                Span::styled("T", Style::default().fg(Color::Red)),
+                Span::styled("S-T", Style::default().fg(Color::Red)),
                 Span::raw(format!(
-                    " - {}({}/{})>",
+                    " {}({}/{}) ",
                     self.topic,
                     self.selected
                         .saturating_add(if self.data.is_empty() { 0 } else { 1 }),
                     self.data.len()
                 )),
+                Span::styled("T", Style::default().fg(Color::Red)),
+                Span::raw(">"),
             ])));
 
         let list_items = self
