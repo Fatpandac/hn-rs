@@ -38,7 +38,7 @@ impl ListBlock {
             list_top_cursor: 0,
             height: 0,
             loading: Loading::new(),
-            readed_history: ReadHistory::new(),
+            readed_history: ReadHistory::new(100),
         }
     }
 
