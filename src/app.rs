@@ -91,15 +91,16 @@ impl App {
         data: watch::Receiver<ChannelData>,
     ) -> std::io::Result<()> {
         let horizontal = Layout::horizontal({
-            let default_layout = vec![
-                ratatui::layout::Constraint::Percentage(80),
-                ratatui::layout::Constraint::Percentage(20),
-            ];
-
             if self.left_block.focus {
-                default_layout
+                vec![
+                    ratatui::layout::Constraint::Percentage(80),
+                    ratatui::layout::Constraint::Percentage(20),
+                ]
             } else {
-                default_layout.iter().cloned().rev().collect()
+                vec![
+                    ratatui::layout::Constraint::Percentage(20),
+                    ratatui::layout::Constraint::Percentage(80),
+                ]
             }
         });
         let [left, right] = horizontal.areas(f.area());

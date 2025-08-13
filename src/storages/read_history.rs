@@ -41,10 +41,8 @@ impl ReadHistory {
         self.storage.load()?;
         let history = &mut self.storage.data.data;
         let items = history.entry(story_type).or_default();
-        println!("{:?}", items);
         if items.len() >= self.max {
             if let Some(oldest) = items.iter().next().cloned() {
-                println!("Removing oldest item: {}", oldest);
                 items.remove(&oldest);
             }
         }
@@ -96,7 +94,6 @@ mod tests {
         history.add_read_item(StoryType::Show, 2).unwrap();
         history.add_read_item(StoryType::Show, 3).unwrap();
 
-        println!("{:?}", history.storage.data.data);
         assert!(!history.id_is_readed(StoryType::Show, 1));
         assert!(history.id_is_readed(StoryType::Show, 2));
         assert!(history.id_is_readed(StoryType::Show, 3));
