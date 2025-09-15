@@ -1,4 +1,4 @@
-use std::io::Result;
+use std::{io::Result, usize};
 
 use crossterm::event::KeyEvent;
 use hackernews::get_items::ItemResponse;
@@ -37,8 +37,10 @@ impl Component for Comment {
         rect: Rect,
         data: watch::Receiver<ChannelData>,
     ) -> Result<()> {
-        if let ChannelData::Comment(Some(data)) = data.borrow().clone() {
-            self.data = Some(data);
+        if self.data.is_none() {
+            if let ChannelData::Comment(Some(data)) = data.borrow().clone() {
+                self.data = Some(data);
+            }
         }
         let block = ratatui::widgets::Block::bordered()
             .border_type(ratatui::widgets::BorderType::Rounded)
@@ -52,19 +54,28 @@ impl Component for Comment {
             });
         let list = List::new(self.data.as_ref().map_or(vec![], |data| {
             data.iter()
-                .filter(|item| item.by.is_some() && item.text.is_some())
+                .skip(1)
                 .map(|item| {
                     let text = format!(
                         "&lt;&lt;{}&gt;&gt;: {}",
-                        item.by.clone().unwrap(),
-                        item.text.clone().unwrap()
+                        item.by.clone().unwrap_or("".to_string()),
+                        html_escape::decode_html_entities(
+                            &item.text.clone().unwrap_or("".to_string())
+                        )
+                        .to_string()
                     );
+                    let show_content = config::rich()
+                        .link_footnotes(false)
+                        .string_from_read(text.as_bytes(), rect.width.saturating_sub(2) as usize)
+                        .unwrap();
+
                     ListItem::new(
-                        config::plain()
-                            .no_link_wrapping()
-                            .link_footnotes(false)
-                            .string_from_read(text.as_bytes(), (rect.width - 2).into())
-                            .unwrap(),
+                        show_content.lines().take(5).collect::<Vec<_>>().join("\n")
+                            + if show_content.lines().count() > 4 {
+                                "\n..."
+                            } else {
+                                ""
+                            },
                     )
                     .style(ratatui::style::Style::new())
                 })
