@@ -47,7 +47,32 @@ enum ChannelAction {
 #[derive(PartialEq, Debug, Clone)]
 enum ChannelData {
     Story(Option<Vec<ItemResponse>>),
-    Comment(Option<Vec<ItemResponse>>),
+    Comment(Option<ItemResponse>),
+}
+
+async fn fetch_tree_item(item_id: usize) -> Option<ItemResponse> {
+    let mut item = match get_item(item_id).await {
+        Ok(it) => it,
+        Err(_) => return None,
+    };
+
+    if let Some(kids) = &item.kids {
+        let futures = kids
+            .iter()
+            .map(|&kid_id| async move { fetch_tree_item(kid_id).await });
+
+        item.children = Some(
+            join_all(futures)
+                .await
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>(),
+        );
+    } else {
+        item.children = None;
+    }
+
+    Some(item)
 }
 
 #[tokio::main]
@@ -86,7 +111,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     last_topic = Some(*topic);
-                    tx_data.send(ChannelData::Story(None)).unwrap();
 
                     let tx_data = tx_data.clone();
                     let topic_copy = *topic;
@@ -113,19 +137,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     last_item = Some(items.clone());
-                    tx_data.send(ChannelData::Comment(None)).unwrap();
 
                     if !items.is_empty() {
                         let tx_data = tx_data.clone();
                         let items_copy = items.clone();
                         comment_handle = Some(tokio::spawn(async move {
-                            let responses = join_all(items_copy.iter().map(|&id| get_item(id)))
-                                .await
-                                .into_iter()
-                                .filter_map(Result::ok)
-                                .collect::<Vec<_>>();
-
-                            let _ = tx_data.send(ChannelData::Comment(Some(responses)));
+                            for &id in &items_copy {
+                                if let Some(item) = fetch_tree_item(id).await {
+                                    let _ = tx_data.send(ChannelData::Comment(Some(item)));
+                                }
+                            }
                         }));
                     }
                 }

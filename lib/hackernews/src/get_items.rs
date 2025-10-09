@@ -29,11 +29,35 @@ pub struct ItemResponse {
     parent: Option<usize>,
     poll: Option<usize>,
     pub kids: Option<Vec<usize>>,
+    pub children: Option<Vec<ItemResponse>>,
     pub url: Option<String>,
     score: Option<usize>,
     pub title: Option<String>,
     parts: Option<Vec<usize>>,
     descendants: Option<usize>,
+}
+
+impl Default for ItemResponse {
+    fn default() -> Self {
+        ItemResponse {
+            id: 0,
+            deleted: None,
+            r#type: ItemType::Story,
+            by: Some("Linux".to_string()),
+            time: 0,
+            text: Some("This is a default item".to_string()),
+            dead: None,
+            parent: None,
+            poll: None,
+            kids: None,
+            children: None,
+            url: None,
+            score: None,
+            title: None,
+            parts: None,
+            descendants: None,
+        }
+    }
 }
 
 pub async fn get_item(item_id: usize) -> Result<ItemResponse, RequestError> {

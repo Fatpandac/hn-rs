@@ -19,6 +19,7 @@ use crate::{ChannelAction, ChannelData, components::Component, panels::Comment};
 pub struct Article {
     pub data: Option<ItemResponse>,
     pub focus: bool,
+    content_height: u16,
     scroll_offset: u16,
     scroll_offset_backup: u16,
     block_height: u16,
@@ -69,12 +70,15 @@ impl Component for Article {
                 }
             }));
 
+        let content = self.generate_content();
+        self.content_height = content.lines().fold(0, |acc, line| {
+            acc + (line.len() as u16 / self.block_width).saturating_add(1)
+        });
+
         let article = Paragraph::new(
             self.data
                 .clone()
-                .map_or("No article selected".to_string(), |_| {
-                    self.generate_content()
-                }),
+                .map_or("No article selected".to_string(), |_| content),
         )
         .wrap(Wrap { trim: true })
         .block(right_block)
@@ -130,6 +134,7 @@ impl Article {
         Self {
             data,
             focus,
+            content_height: 0,
             scroll_offset: 0,
             scroll_offset_backup: 0,
             block_height: 0,
@@ -151,19 +156,13 @@ impl Article {
     }
 
     pub fn scroll(&mut self, up: bool) {
-        let content_height = {
-            let content = self.generate_content();
-            content.lines().fold(0, |acc, line| {
-                acc + (line.len() as u16 / self.block_width).saturating_add(1)
-            })
-        };
         self.scroll_offset = {
             if up {
                 self.scroll_offset.saturating_sub(1)
-            } else if self.scroll_offset + self.block_height < content_height {
-                self.scroll_offset.saturating_add(1)
             } else {
                 self.scroll_offset
+                    .saturating_add(1)
+                    .min(self.content_height)
             }
         };
     }
