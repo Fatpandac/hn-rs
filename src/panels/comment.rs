@@ -33,8 +33,12 @@ impl Comment {
     fn formater(&self, item: &ItemResponse, max_width: usize, indent: Option<i16>) -> String {
         let indent_space = " ".repeat(indent.unwrap_or(0) as usize);
         let mut text = format!(
-            "{}&lt;&lt;{}&gt;&gt;: {}",
-            indent_space,
+            "{}({}): {}",
+            if indent_space.len() > 0 {
+                format!("{}└─&gt;", indent_space)
+            } else {
+                indent_space
+            },
             item.by.clone().unwrap_or("".to_string()),
             html_escape::decode_html_entities(&item.text.clone().unwrap_or("".to_string()))
                 .to_string()
@@ -43,7 +47,7 @@ impl Comment {
             let children_text = children
                 .into_iter()
                 .map(|child| {
-                    let text = self.formater(child, max_width, Some(indent.unwrap_or(0) + 2));
+                    let text = self.formater(child, max_width, Some(indent.unwrap_or(0) + 1));
                     return text;
                 })
                 .collect::<Vec<_>>()
@@ -150,17 +154,20 @@ mod tests {
     fn test_formater() {
         let comment = Comment::new(vec![]);
         let mut item = ItemResponse::default();
+        let mut item_inside = item.clone();
+        item_inside.children = Some(vec![ItemResponse::default()]);
         item.children = Some(vec![
             ItemResponse::default(),
             ItemResponse::default(),
-            ItemResponse::default(),
+            item_inside,
         ]);
 
         let str = comment.formater(&item, 80, None);
-        let res = "<<Linux>>: This is a default item\n  \
-                    <<Linux>>: This is a default item\n  \
-                    <<Linux>>: This is a default item\n  \
-                    <<Linux>>: This is a default item\n";
+        let res = "(Linux): This is a default item\n └─>\
+                    (Linux): This is a default item\n └─>\
+                    (Linux): This is a default item\n └─>\
+                    (Linux): This is a default item\n  └─>\
+                    (Linux): This is a default item\n";
 
         assert_eq!(str, res);
     }

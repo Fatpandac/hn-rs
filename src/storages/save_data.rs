@@ -86,7 +86,6 @@ mod tests {
 
         assert_eq!(loaded_data.data, data);
 
-
         save_data.remove()?;
         Ok(())
     }
