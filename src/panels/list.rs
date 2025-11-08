@@ -41,6 +41,10 @@ impl ListBlock {
         }
     }
 
+    pub fn is_loading(&self) -> bool {
+        self.loading.is_loading()
+    }
+
     fn next_topic(&mut self) {
         self.topic = match self.topic {
             StoryType::Show => StoryType::Best,

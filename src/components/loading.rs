@@ -36,6 +36,10 @@ impl Loading {
         frame
     }
 
+    pub fn is_loading(&self) -> bool {
+        self.is_loading
+    }
+
     pub fn set_loading(&mut self, loading: bool) {
         self.is_loading = loading;
     }

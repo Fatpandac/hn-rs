@@ -136,7 +136,7 @@ fn run(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>>
     });
 
     // Initial load
-    tx_aciton.send(AppAction::Story(StoryType::Top))?;
+    tx_aciton.send(AppAction::Story(StoryType::Show))?;
 
     loop {
         if event::poll(Duration::from_millis(16))? {
@@ -148,9 +148,11 @@ fn run(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>>
             break;
         }
 
-        terminal.draw(|f| {
-            app.draw(f).unwrap();
-        })?;
+        if app.should_draw() {
+            terminal.draw(|f| {
+                app.draw(f).unwrap();
+            })?;
+        }
 
         while let Ok(data_event) = rx_data.try_recv() {
             app.update_data(data_event);

@@ -19,6 +19,7 @@ pub struct App {
     list_block: ListBlock,
     focus: isize,
     tx_action: Sender<AppAction>,
+    dirty: bool,
     pub is_running: bool,
 }
 
@@ -30,12 +31,25 @@ impl App {
         };
 
         Self {
+            dirty: true,
             is_running: true,
             list_block: ListBlock::new(&env, true),
             article: Article::new(&env),
             tx_action,
             focus: 0,
         }
+    }
+
+    pub fn should_draw(&mut self) -> bool {
+        if self.list_block.is_loading() {
+            return true;
+        }
+        if self.dirty {
+            self.dirty = false;
+            return true;
+        }
+
+        false
     }
 
     pub fn update_data(&mut self, data: AppData) {
@@ -57,10 +71,12 @@ impl App {
             }
         }
         self.article.update_data(data);
+        self.dirty = true;
     }
 
     pub fn handle_event(&mut self, ev: Event) {
         if let Event::Key(key) = ev {
+            self.dirty = true;
             let switch_to_left_block =
                 (key.code == KeyCode::Char('h') || key.code == KeyCode::Esc) && self.article.focus;
             let switch_to_right_block = (key.code == KeyCode::Char('l')
