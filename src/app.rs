@@ -12,6 +12,7 @@ pub struct App {
     focus: isize,
     tx_action: watch::Sender<ChannelAction>,
     rx_data: watch::Receiver<ChannelData>,
+    pub is_running: bool,
 }
 
 impl App {
@@ -20,6 +21,7 @@ impl App {
         rx_data: watch::Receiver<ChannelData>,
     ) -> Self {
         Self {
+            is_running: true,
             right_block: Article::new(None, false),
             left_block: ListBlock::new(Vec::new(), hackernews::StoryType::Show, true),
             focus: 0,
@@ -82,6 +84,8 @@ impl App {
                 self.left_block.focus = false;
                 self.right_block.focus = true;
             }
+        } else if key.code == KeyCode::Char('q') {
+            self.is_running = false
         }
     }
 

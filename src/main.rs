@@ -4,7 +4,7 @@ use std::{
 };
 
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -83,7 +83,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     setup_terminal()?;
     let _ = terminal.clear();
 
-    let (tx_stop, rx_stop) = watch::channel::<bool>(true);
     let (tx_aciton, rx_action) =
         watch::channel::<ChannelAction>(ChannelAction::Story(StoryType::Show));
     let (tx_data, rx_data) = watch::channel::<ChannelData>(ChannelData::Story(None));
@@ -96,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut story_handle: Option<JoinHandle<()>> = None;
         let mut comment_handle: Option<JoinHandle<()>> = None;
 
-        while *rx_stop.borrow() {
+        loop {
             let rx_topic = rx_action.borrow().clone();
 
             match &rx_topic {
@@ -159,13 +158,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') {
-                    tx_stop.send(false).unwrap();
-                    break;
-                } else {
-                    app.handle_event(key, tx_aciton.clone());
-                }
+                app.handle_event(key, tx_aciton.clone());
             }
+        }
+
+        if !app.is_running {
+            break;
         }
 
         terminal.draw(|f| {
