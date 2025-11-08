@@ -1,12 +1,19 @@
 use std::{io::Result, usize};
 
-use crossterm::event::{KeyCode, KeyEvent};
 use hackernews::get_items::ItemResponse;
 use html2text::config;
-use ratatui::{Frame, layout::Rect, style::Stylize, widgets::Paragraph};
-use tokio::sync::watch;
+use ratatui::{
+    Frame,
+    crossterm::event::{KeyCode, KeyEvent},
+    layout::Rect,
+    style::Stylize,
+    widgets::Paragraph,
+};
 
-use crate::{ChannelAction, ChannelData, components::Component};
+use crate::{
+    AppData,
+    components::{Component, DrawableComponet},
+};
 
 #[derive(Debug)]
 pub struct Comment {
@@ -27,6 +34,19 @@ impl Comment {
             block_width: 0,
             focus: false,
             data: None,
+        }
+    }
+
+    pub fn update_data(&mut self, data: AppData) {
+        if let AppData::Comment(Some(data)) = data {
+            if let Some(mut items) = self.data.clone() {
+                if items.iter().map(|item| item.id).all(|id| id != data.id) {
+                    items.push(data);
+                    self.data = Some(items);
+                }
+            } else {
+                self.data = Some(vec![data]);
+            }
         }
     }
 
@@ -80,23 +100,8 @@ impl Comment {
     }
 }
 
-impl Component for Comment {
-    fn draw(
-        &mut self,
-        f: &mut Frame,
-        rect: Rect,
-        data: watch::Receiver<ChannelData>,
-    ) -> Result<()> {
-        if let ChannelData::Comment(Some(data)) = data.borrow().clone() {
-            if let Some(mut items) = self.data.clone() {
-                if items.iter().map(|item| item.id).all(|id| id != data.id) {
-                    items.push(data);
-                    self.data = Some(items);
-                }
-            } else {
-                self.data = Some(vec![data]);
-            }
-        }
+impl DrawableComponet for Comment {
+    fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
         let block = ratatui::widgets::Block::bordered()
             .border_type(ratatui::widgets::BorderType::Rounded)
             .title("Comments")
@@ -134,8 +139,10 @@ impl Component for Comment {
 
         Ok(())
     }
+}
 
-    fn event(&mut self, key: KeyEvent, _action: watch::Sender<ChannelAction>) {
+impl Component for Comment {
+    fn event(&mut self, key: KeyEvent) {
         if self.focus {
             if key.code == KeyCode::Char('j') {
                 self.scroll(false);

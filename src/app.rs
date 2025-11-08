@@ -1,101 +1,109 @@
-use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{Frame, layout::Layout};
-use tokio::sync::watch;
+use crossbeam_channel::Sender;
+use ratatui::{
+    Frame,
+    crossterm::event::{Event, KeyCode},
+    layout::Layout,
+};
 
-use crate::components::Component;
+use crate::components::{Component, DrawableComponet};
 use crate::panels::{Article, ListBlock};
-use crate::{ChannelAction, ChannelData};
+use crate::{AppAction, AppData};
+
+pub struct Environment {
+    pub tx_action: Sender<AppAction>,
+    pub tx_data: Sender<AppData>,
+}
 
 pub struct App {
-    right_block: Article,
-    left_block: ListBlock,
+    article: Article,
+    list_block: ListBlock,
     focus: isize,
-    tx_action: watch::Sender<ChannelAction>,
-    rx_data: watch::Receiver<ChannelData>,
+    tx_action: Sender<AppAction>,
     pub is_running: bool,
 }
 
 impl App {
-    pub fn new(
-        tx_action: watch::Sender<ChannelAction>,
-        rx_data: watch::Receiver<ChannelData>,
-    ) -> Self {
+    pub fn new(tx_action: Sender<AppAction>, tx_data: Sender<AppData>) -> Self {
+        let env = Environment {
+            tx_action: tx_action.clone(),
+            tx_data,
+        };
+
         Self {
             is_running: true,
-            right_block: Article::new(None, false),
-            left_block: ListBlock::new(Vec::new(), hackernews::StoryType::Show, true),
-            focus: 0,
+            list_block: ListBlock::new(&env, true),
+            article: Article::new(&env),
             tx_action,
-            rx_data,
+            focus: 0,
         }
     }
 
-    pub fn update_data(&mut self) {
-        if let ChannelData::Story(items) = self.rx_data.borrow().clone() {
+    pub fn update_data(&mut self, data: AppData) {
+        if let AppData::Story(items) = &data {
             if let Some(items) = items {
-                if items.last().is_some() && items.last() == self.left_block.data.last() {
+                if items.last().is_some() && items.last() == self.list_block.data.last() {
                     return;
                 }
-                self.left_block.set_data(items);
-                self.right_block.set_data(
-                    self.left_block
+                self.list_block.set_data(items.to_vec());
+                self.article.set_data(
+                    self.list_block
                         .data
-                        .get(self.left_block.selected as usize)
+                        .get(self.list_block.selected as usize)
                         .cloned(),
                 );
             } else {
-                self.left_block.reset();
-                self.right_block.set_data(None);
+                self.list_block.reset();
+                self.article.set_data(None);
+            }
+        }
+        self.article.update_data(data);
+    }
+
+    pub fn handle_event(&mut self, ev: Event) {
+        if let Event::Key(key) = ev {
+            let switch_to_left_block =
+                (key.code == KeyCode::Char('h') || key.code == KeyCode::Esc) && self.article.focus;
+            let switch_to_right_block = (key.code == KeyCode::Char('l')
+                || key.code == KeyCode::Enter)
+                && self.list_block.focus;
+
+            if self.focus == 0 {
+                self.list_block.event(key);
+
+                self.article.set_data(
+                    self.list_block
+                        .data
+                        .get(self.list_block.selected as usize)
+                        .cloned(),
+                );
+                self.tx_action
+                    .send(AppAction::Story(self.list_block.topic))
+                    .unwrap();
+            } else if self.focus == 1 {
+                self.article.event(key);
+            }
+            if switch_to_left_block {
+                self.focus = 0;
+                self.list_block.focus = true;
+                self.article.focus = false;
+            } else if switch_to_right_block {
+                if self.list_block.data.is_empty() {
+                    return;
+                }
+                if self.list_block.set_readed().is_ok() {
+                    self.focus = 1;
+                    self.list_block.focus = false;
+                    self.article.focus = true;
+                }
+            } else if key.code == KeyCode::Char('q') {
+                self.is_running = false
             }
         }
     }
 
-    pub fn handle_event(&mut self, key: KeyEvent, action: watch::Sender<ChannelAction>) {
-        let switch_to_left_block =
-            (key.code == KeyCode::Char('h') || key.code == KeyCode::Esc) && self.right_block.focus;
-        let switch_to_right_block =
-            (key.code == KeyCode::Char('l') || key.code == KeyCode::Enter) && self.left_block.focus;
-
-        if self.focus == 0 {
-            self.left_block.event(key, action);
-
-            self.right_block.set_data(
-                self.left_block
-                    .data
-                    .get(self.left_block.selected as usize)
-                    .cloned(),
-            );
-            self.tx_action
-                .send(ChannelAction::Story(self.left_block.topic))
-                .unwrap();
-        } else if self.focus == 1 {
-            self.right_block.event(key, action);
-        }
-        if switch_to_left_block {
-            self.focus = 0;
-            self.left_block.focus = true;
-            self.right_block.focus = false;
-        } else if switch_to_right_block {
-            if self.left_block.data.is_empty() {
-                return;
-            }
-            if self.left_block.set_readed().is_ok() {
-                self.focus = 1;
-                self.left_block.focus = false;
-                self.right_block.focus = true;
-            }
-        } else if key.code == KeyCode::Char('q') {
-            self.is_running = false
-        }
-    }
-
-    pub fn draw(
-        &mut self,
-        f: &mut Frame,
-        data: watch::Receiver<ChannelData>,
-    ) -> std::io::Result<()> {
+    pub fn draw(&mut self, f: &mut Frame) -> std::io::Result<()> {
         let horizontal = Layout::horizontal({
-            if self.left_block.focus {
+            if self.list_block.focus {
                 vec![
                     ratatui::layout::Constraint::Percentage(80),
                     ratatui::layout::Constraint::Percentage(20),
@@ -109,8 +117,8 @@ impl App {
         });
         let [left, right] = horizontal.areas(f.area());
 
-        self.left_block.draw(f, left, data.clone())?;
-        self.right_block.draw(f, right, data.clone())?;
+        self.list_block.draw(f, left)?;
+        self.article.draw(f, right)?;
 
         Ok(())
     }

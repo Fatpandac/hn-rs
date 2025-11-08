@@ -10,7 +10,7 @@ members = [
 
 [dependencies]
 chrono = "0.4.41"
-crossterm = "0.29.0"
+crossbeam-channel = "0.5.15"
 directories = "6.0.0"
 futures = "0.3.31"
 hackernews = { path = "lib/hackernews" }

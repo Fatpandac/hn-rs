@@ -1,19 +1,18 @@
 use std::io::Result;
 
-use crossterm::event::{KeyCode, KeyModifiers};
 use hackernews::{StoryType, get_items::ItemResponse};
 use ratatui::{
     Frame,
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::Rect,
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, BorderType, List, ListItem, block::Title},
 };
-use tokio::sync::watch;
 
 use crate::{
-    ChannelAction, ChannelData,
-    components::{Component, Loading},
+    app::Environment,
+    components::{Component, DrawableComponet, Loading},
     storages::ReadHistory,
 };
 
@@ -29,10 +28,10 @@ pub struct ListBlock {
 }
 
 impl ListBlock {
-    pub fn new(data: Vec<ItemResponse>, topic: StoryType, focus: bool) -> Self {
+    pub fn new(_env: &Environment, focus: bool) -> Self {
         Self {
-            data,
-            topic,
+            data: vec![],
+            topic: StoryType::Show,
             focus,
             selected: 0,
             list_top_cursor: 0,
@@ -83,13 +82,8 @@ impl ListBlock {
     }
 }
 
-impl Component for ListBlock {
-    fn draw(
-        &mut self,
-        f: &mut Frame,
-        rect: Rect,
-        _data: watch::Receiver<ChannelData>,
-    ) -> Result<()> {
+impl DrawableComponet for ListBlock {
+    fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
         self.height = rect.height.saturating_sub(2);
         let left_block = Block::bordered()
             .border_type(BorderType::Rounded)
@@ -155,8 +149,10 @@ impl Component for ListBlock {
         f.render_widget(list, rect);
         Ok(())
     }
+}
 
-    fn event(&mut self, key: crossterm::event::KeyEvent, _action: watch::Sender<ChannelAction>) {
+impl Component for ListBlock {
+    fn event(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Char('j') {
             self.selected = self
                 .selected

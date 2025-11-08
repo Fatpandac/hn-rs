@@ -1,20 +1,25 @@
 use std::io::Result;
 
 use chrono::DateTime;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossbeam_channel::Sender;
 use hackernews::get_items::ItemResponse;
 use html2text::config;
 use ratatui::{
     Frame,
+    crossterm::event::{KeyCode, KeyEvent},
     layout::{Layout, Rect},
     prelude::Color,
     style::{Style, Stylize},
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, Wrap},
 };
-use tokio::sync::watch;
 
-use crate::{ChannelAction, ChannelData, components::Component, panels::Comment};
+use crate::{
+    AppAction, AppData,
+    app::Environment,
+    components::{Component, DrawableComponet},
+    panels::Comment,
+};
 
 pub struct Article {
     pub data: Option<ItemResponse>,
@@ -25,15 +30,11 @@ pub struct Article {
     block_height: u16,
     block_width: u16,
     comment: Comment,
+    tx_action: Sender<AppAction>,
 }
 
-impl Component for Article {
-    fn draw(
-        &mut self,
-        f: &mut Frame,
-        rect: Rect,
-        data: watch::Receiver<ChannelData>,
-    ) -> Result<()> {
+impl DrawableComponet for Article {
+    fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
         let vertical = Layout::vertical(if self.comment.focus {
             [
                 ratatui::layout::Constraint::Percentage(20),
@@ -85,11 +86,14 @@ impl Component for Article {
         .scroll((self.scroll_offset, 0));
 
         f.render_widget(article, top);
-        self.comment.draw(f, bottom, data)?;
+        self.comment.draw(f, bottom)?;
         Ok(())
     }
+}
 
-    fn event(&mut self, key: KeyEvent, action: watch::Sender<ChannelAction>) {
+impl Component for Article {
+    fn event(&mut self, key: KeyEvent) {
+        let action = &self.tx_action;
         if self.focus {
             if key.code == KeyCode::Char('j') {
                 self.scroll(false);
@@ -110,7 +114,7 @@ impl Component for Article {
                 self.scroll_offset = 0;
                 if self.data.is_some() {
                     action
-                        .send(ChannelAction::Items(
+                        .send(AppAction::Items(
                             self.data.clone().unwrap().kids.unwrap_or_default(),
                         ))
                         .unwrap();
@@ -122,26 +126,32 @@ impl Component for Article {
                 self.focus = true;
                 self.scroll_offset = self.scroll_offset_backup;
                 self.scroll_offset_backup = 0;
-                action.send(ChannelAction::Items(Vec::new())).unwrap();
+                action.send(AppAction::Items(Vec::new())).unwrap();
             }
-            self.comment.event(key, action);
+            self.comment.event(key);
         }
     }
 }
 
 impl Article {
-    pub fn new(data: Option<ItemResponse>, focus: bool) -> Self {
+    pub fn new(env: &Environment) -> Self {
         Self {
-            data,
-            focus,
+            data: None,
+            focus: false,
             content_height: 0,
             scroll_offset: 0,
             scroll_offset_backup: 0,
             block_height: 0,
             block_width: 0,
             comment: Comment::new(Vec::new()),
+            tx_action: env.tx_action.clone(),
         }
     }
+
+    pub fn update_data(&mut self, data: AppData) {
+        self.comment.update_data(data);
+    }
+
 
     pub fn set_data(&mut self, data: Option<ItemResponse>) {
         if self.data == data {

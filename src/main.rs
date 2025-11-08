@@ -1,21 +1,14 @@
-use std::{
-    io::{self, stdout},
-    time::Duration,
-};
+use std::time::Duration;
 
-use crossterm::{
-    event::{self, Event},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
+use crossbeam_channel::unbounded;
 use futures::future::join_all;
 use hackernews::{
     StoryType,
     get_items::{ItemResponse, get_item},
     get_stories::get_stories,
 };
-use ratatui::{Terminal, prelude::CrosstermBackend};
-use tokio::{sync::watch, task::JoinHandle, time::sleep};
+use ratatui::{DefaultTerminal, crossterm::event};
+use tokio::{task::JoinHandle, time::sleep};
 
 use crate::app::App;
 
@@ -24,28 +17,14 @@ mod components;
 mod panels;
 mod storages;
 
-fn setup_terminal() -> std::io::Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
-    enable_raw_mode()?;
-    execute!(stdout(), EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout());
-    let terminal = Terminal::new(backend)?;
-    Ok(terminal)
-}
-
-fn restore_terminal() -> std::io::Result<()> {
-    disable_raw_mode()?;
-    execute!(stdout(), LeaveAlternateScreen)?;
-    Ok(())
-}
-
 #[derive(PartialEq, Debug, Clone)]
-enum ChannelAction {
+enum AppAction {
     Story(StoryType),
     Items(Vec<usize>),
 }
 
 #[derive(PartialEq, Debug, Clone)]
-enum ChannelData {
+enum AppData {
     Story(Option<Vec<ItemResponse>>),
     Comment(Option<ItemResponse>),
 }
@@ -77,17 +56,18 @@ async fn fetch_tree_item(item_id: usize) -> Option<ItemResponse> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    setup_terminal()?;
-    let _ = terminal.clear();
+    let mut terminal = ratatui::init();
+    run(&mut terminal)?;
+    ratatui::restore();
 
-    let (tx_aciton, rx_action) =
-        watch::channel::<ChannelAction>(ChannelAction::Story(StoryType::Show));
-    let (tx_data, rx_data) = watch::channel::<ChannelData>(ChannelData::Story(None));
+    Ok(())
+}
 
-    let mut app = App::new(tx_aciton.clone(), rx_data.clone());
+fn run(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>> {
+    let (tx_aciton, rx_action) = unbounded();
+    let (tx_data, rx_data) = unbounded();
+
+    let mut app = App::new(tx_aciton.clone(), tx_data.clone());
 
     tokio::spawn(async move {
         let mut last_topic: Option<StoryType> = None;
@@ -96,57 +76,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut comment_handle: Option<JoinHandle<()>> = None;
 
         loop {
-            let rx_topic = rx_action.borrow().clone();
+            if let Ok(rx_topic) = rx_action.try_recv() {
+                match rx_topic {
+                    AppAction::Story(topic) => {
+                        if Some(topic) == last_topic {
+                            sleep(Duration::from_millis(300)).await;
+                            continue;
+                        }
 
-            match &rx_topic {
-                ChannelAction::Story(topic) => {
-                    if Some(*topic) == last_topic {
-                        sleep(Duration::from_millis(300)).await;
-                        continue;
-                    }
+                        if let Some(handle) = story_handle.take() {
+                            handle.abort();
+                        }
 
-                    if let Some(handle) = story_handle.take() {
-                        handle.abort();
-                    }
+                        last_topic = Some(topic);
 
-                    last_topic = Some(*topic);
-
-                    let tx_data = tx_data.clone();
-                    let topic_copy = *topic;
-                    story_handle = Some(tokio::spawn(async move {
-                        let list = get_stories(topic_copy).await.unwrap_or_default();
-                        let responses = join_all(list.iter().map(|&id| get_item(id)))
-                            .await
-                            .into_iter()
-                            .filter_map(Result::ok)
-                            .collect::<Vec<_>>();
-
-                        let _ = tx_data.send(ChannelData::Story(Some(responses)));
-                    }));
-                }
-
-                ChannelAction::Items(items) => {
-                    if Some(items.clone()) == last_item {
-                        sleep(Duration::from_millis(300)).await;
-                        continue;
-                    }
-
-                    if let Some(handle) = comment_handle.take() {
-                        handle.abort();
-                    }
-
-                    last_item = Some(items.clone());
-
-                    if !items.is_empty() {
                         let tx_data = tx_data.clone();
-                        let items_copy = items.clone();
-                        comment_handle = Some(tokio::spawn(async move {
-                            for &id in &items_copy {
-                                if let Some(item) = fetch_tree_item(id).await {
-                                    let _ = tx_data.send(ChannelData::Comment(Some(item)));
-                                }
-                            }
+                        let topic_copy = topic;
+                        story_handle = Some(tokio::spawn(async move {
+                            let list = get_stories(topic_copy).await.unwrap_or_default();
+                            let responses = join_all(list.iter().map(|&id| get_item(id)))
+                                .await
+                                .into_iter()
+                                .filter_map(Result::ok)
+                                .collect::<Vec<_>>();
+
+                            let _ = tx_data.send(AppData::Story(Some(responses)));
                         }));
+                    }
+
+                    AppAction::Items(items) => {
+                        if Some(items.clone()) == last_item {
+                            sleep(Duration::from_millis(300)).await;
+                            continue;
+                        }
+
+                        if let Some(handle) = comment_handle.take() {
+                            handle.abort();
+                        }
+
+                        last_item = Some(items.clone());
+
+                        if !items.is_empty() {
+                            let tx_data = tx_data.clone();
+                            let items_copy = items.clone();
+                            comment_handle = Some(tokio::spawn(async move {
+                                for &id in &items_copy {
+                                    if let Some(item) = fetch_tree_item(id).await {
+                                        let _ = tx_data.send(AppData::Comment(Some(item)));
+                                    }
+                                }
+                            }));
+                        }
                     }
                 }
             }
@@ -155,11 +135,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    // Initial load
+    tx_aciton.send(AppAction::Story(StoryType::Top))?;
+
     loop {
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                app.handle_event(key, tx_aciton.clone());
-            }
+        if event::poll(Duration::from_millis(16))? {
+            let ev = event::read()?;
+            app.handle_event(ev);
         }
 
         if !app.is_running {
@@ -167,12 +149,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         terminal.draw(|f| {
-            app.draw(f, rx_data.clone()).unwrap();
+            app.draw(f).unwrap();
         })?;
 
-        app.update_data();
+        while let Ok(data_event) = rx_data.try_recv() {
+            app.update_data(data_event);
+        }
     }
 
-    restore_terminal()?;
     Ok(())
 }
