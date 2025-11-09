@@ -114,6 +114,8 @@ impl App {
             } else if key.code == KeyCode::Char('q') {
                 self.is_running = false
             }
+        } else if let Event::Resize(..) = ev {
+            self.dirty = true
         }
     }
 
