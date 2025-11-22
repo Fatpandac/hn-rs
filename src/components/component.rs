@@ -6,6 +6,6 @@ pub trait Component {
     fn event(&mut self, key: KeyEvent);
 }
 
-pub trait DrawableComponet {
+pub trait DrawableComponent {
     fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()>;
 }

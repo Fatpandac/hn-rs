@@ -12,7 +12,7 @@ use ratatui::{
 
 use crate::{
     AppData,
-    components::{Component, DrawableComponet},
+    components::{Component, DrawableComponent},
 };
 
 #[derive(Debug)]
@@ -100,7 +100,7 @@ impl Comment {
     }
 }
 
-impl DrawableComponet for Comment {
+impl DrawableComponent for Comment {
     fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
         let block = ratatui::widgets::Block::bordered()
             .border_type(ratatui::widgets::BorderType::Rounded)

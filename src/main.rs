@@ -64,10 +64,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn run(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>> {
-    let (tx_aciton, rx_action) = unbounded();
+    let (tx_action, rx_action) = unbounded();
     let (tx_data, rx_data) = unbounded();
 
-    let mut app = App::new(tx_aciton.clone(), tx_data.clone());
+    let mut app = App::new(tx_action.clone());
 
     tokio::spawn(async move {
         let mut last_topic: Option<StoryType> = None;
@@ -136,7 +136,7 @@ fn run(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>>
     });
 
     // Initial load
-    tx_aciton.send(AppAction::Story(StoryType::Show))?;
+    tx_action.send(AppAction::Story(StoryType::Show))?;
 
     loop {
         if event::poll(Duration::from_millis(16))? {

@@ -17,7 +17,7 @@ use ratatui::{
 use crate::{
     AppAction, AppData,
     app::Environment,
-    components::{Component, DrawableComponet},
+    components::{Component, DrawableComponent},
     panels::Comment,
 };
 
@@ -33,7 +33,7 @@ pub struct Article {
     tx_action: Sender<AppAction>,
 }
 
-impl DrawableComponet for Article {
+impl DrawableComponent for Article {
     fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
         let vertical = Layout::vertical(if self.comment.focus {
             [

@@ -12,7 +12,7 @@ use ratatui::{
 
 use crate::{
     app::Environment,
-    components::{Component, DrawableComponet, Loading},
+    components::{Component, DrawableComponent, Loading},
     storages::ReadHistory,
 };
 
@@ -78,7 +78,7 @@ impl ListBlock {
         self.selected = 0;
     }
 
-    pub fn set_readed(&mut self) -> Result<()> {
+    pub fn set_read(&mut self) -> Result<()> {
         let current_item = self.data.get(self.selected as usize).unwrap();
         self.readed_history
             .add_read_item(self.topic, current_item.id)?;
@@ -86,7 +86,7 @@ impl ListBlock {
     }
 }
 
-impl DrawableComponet for ListBlock {
+impl DrawableComponent for ListBlock {
     fn draw(&mut self, f: &mut Frame, rect: Rect) -> Result<()> {
         self.height = rect.height.saturating_sub(2);
         let left_block = Block::bordered()

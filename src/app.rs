@@ -5,13 +5,12 @@ use ratatui::{
     layout::Layout,
 };
 
-use crate::components::{Component, DrawableComponet};
+use crate::components::{Component, DrawableComponent};
 use crate::panels::{Article, ListBlock};
 use crate::{AppAction, AppData};
 
 pub struct Environment {
     pub tx_action: Sender<AppAction>,
-    pub tx_data: Sender<AppData>,
 }
 
 pub struct App {
@@ -24,10 +23,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(tx_action: Sender<AppAction>, tx_data: Sender<AppData>) -> Self {
+    pub fn new(tx_action: Sender<AppAction>) -> Self {
         let env = Environment {
             tx_action: tx_action.clone(),
-            tx_data,
         };
 
         Self {
@@ -106,7 +104,7 @@ impl App {
                 if self.list_block.data.is_empty() {
                     return;
                 }
-                if self.list_block.set_readed().is_ok() {
+                if self.list_block.set_read().is_ok() {
                     self.focus = 1;
                     self.list_block.focus = false;
                     self.article.focus = true;
