@@ -116,13 +116,15 @@ impl DrawableComponent for ListBlock {
         let list_items = self
             .data
             .iter()
+            .skip(self.list_top_cursor as usize)
+            .take(self.height as usize)
             .enumerate()
             .map(|(idx, item)| {
                 let is_readed = self.readed_history.id_is_readed(self.topic, item.id);
                 let list_item = ListItem::new(item.title.clone().unwrap_or("No title".to_string()));
                 let mut style = Style::default().fg(Color::White);
 
-                if idx == self.selected as usize {
+                if idx + self.list_top_cursor as usize == self.selected as usize {
                     style = style.bg(Color::Blue);
                 } else if is_readed {
                     style = style.fg(Color::DarkGray);
@@ -132,23 +134,7 @@ impl DrawableComponent for ListBlock {
             })
             .collect::<Vec<_>>();
 
-        let list_len: u16 = list_items.len() as u16;
-        if self.selected < self.list_top_cursor {
-            self.list_top_cursor = self
-                .list_top_cursor
-                .saturating_sub(self.list_top_cursor.saturating_sub(self.selected));
-        } else if self.selected >= self.list_top_cursor + self.height {
-            self.list_top_cursor = self
-                .list_top_cursor
-                .saturating_add(
-                    self.selected
-                        .saturating_sub(self.list_top_cursor + self.height.saturating_sub(1)),
-                )
-                .min(list_len);
-        }
-        let top: usize = self.list_top_cursor.into();
-        let bottom: usize = (self.selected + self.height).min(list_len).into();
-        let list = List::new(list_items[top..bottom].to_vec()).block(left_block);
+        let list = List::new(list_items).block(left_block);
 
         f.render_widget(list, rect);
         Ok(())
@@ -162,14 +148,25 @@ impl Component for ListBlock {
                 .selected
                 .saturating_add(1)
                 .min(self.data.len().saturating_sub(1) as u16);
+            if self.selected >= self.list_top_cursor + self.height {
+                self.list_top_cursor = self.list_top_cursor.saturating_add(1);
+            }
         } else if key.code == KeyCode::Char('k') {
             self.selected = self.selected.saturating_sub(1);
+            if self.selected < self.list_top_cursor {
+                self.list_top_cursor = self.list_top_cursor.saturating_sub(1);
+            }
         } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('b') {
-            self.selected = self.selected.saturating_sub(self.height);
+            self.selected = self.selected.saturating_sub(self.height - 1);
+            self.list_top_cursor = self.selected.min(self.data.len().saturating_sub(1) as u16);
         } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('f') {
             self.selected = self
                 .selected
-                .saturating_add(self.height)
+                .saturating_add(self.height - 1)
+                .min(self.data.len().saturating_sub(1) as u16);
+            self.list_top_cursor = self
+                .selected
+                .saturating_sub(self.height - 1)
                 .min(self.data.len().saturating_sub(1) as u16);
         } else if key.code == KeyCode::Tab {
             self.next_topic();
